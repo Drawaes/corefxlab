@@ -50,16 +50,7 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.OpenSsl
             public extern static IntPtr SSL_CIPHER_get_name(IntPtr ssl_cipher);
             [DllImport(SslDll, CallingConvention = CallingConvention.Cdecl)]
             public extern static IntPtr SSL_get_current_cipher(IntPtr ssl);
-
-            public static CipherInfo GetCipherInfo(IntPtr ssl)
-            {
-                var returnValue = new CipherInfo();
-                var cPtr = SSL_get_current_cipher(ssl);
-                returnValue.Name = Marshal.PtrToStringAnsi(SSL_CIPHER_get_name(cPtr));
-
-                return returnValue;
-            }
-
+            
             [DllImport(SslDll, CallingConvention = CallingConvention.Cdecl)]
             public extern static IntPtr SSL_new(IntPtr sslContext);
             [DllImport(SslDll, CallingConvention = CallingConvention.Cdecl)]
@@ -142,16 +133,7 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.OpenSsl
             public extern static IntPtr SSL_CIPHER_get_name(IntPtr ssl_cipher);
             [DllImport(SslDll, CallingConvention = CallingConvention.Cdecl)]
             public extern static IntPtr SSL_get_current_cipher(IntPtr ssl);
-
-            public static CipherInfo GetCipherInfo(IntPtr ssl)
-            {
-                var returnValue = new CipherInfo();
-                var cPtr = SSL_get_current_cipher(ssl);
-                returnValue.Name = Marshal.PtrToStringAnsi(SSL_CIPHER_get_name(cPtr));
-
-                return returnValue;
-            }
-
+                        
             [DllImport(SslDll, CallingConvention = CallingConvention.Cdecl)]
             public extern static IntPtr SSL_new(IntPtr sslContext);
             [DllImport(SslDll, CallingConvention = CallingConvention.Cdecl)]
@@ -236,16 +218,7 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.OpenSsl
             public extern static IntPtr SSL_get_current_cipher(IntPtr ssl);
             [DllImport(SslDll, CallingConvention = CallingConvention.Cdecl)]
             public extern static int SSL_CIPHER_get_bits(IntPtr ssl_cipher, out int alg_bits);
-
-            public static CipherInfo GetCipherInfo(IntPtr ssl)
-            {
-                var returnValue = new CipherInfo();
-                var cPtr = SSL_get_current_cipher(ssl);
-                returnValue.Name = Marshal.PtrToStringAnsi(SSL_CIPHER_get_name(cPtr));
-                SSL_CIPHER_get_bits(ssl, out returnValue.KeySizeInBits);
-                return returnValue;
-            }
-
+            
             [DllImport(SslDll, CallingConvention = CallingConvention.Cdecl)]
             public extern static IntPtr SSL_new(IntPtr sslContext);
             [DllImport(SslDll, CallingConvention = CallingConvention.Cdecl)]
@@ -408,8 +381,7 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.OpenSsl
             }
         }
         public static int SSL_CTX_set_alpn_protos(IntPtr ctx, IntPtr protocolList, uint protocolListLength) => IsWindows ? WindowsLib.SSL_CTX_set_alpn_protos(ctx, protocolList, protocolListLength) : IsOsx ? OsxLib.SSL_CTX_set_alpn_protos(ctx, protocolList, protocolListLength) : UnixLib.SSL_CTX_set_alpn_protos(ctx, protocolList, protocolListLength);
-        public static CipherInfo GetCipherInfo(IntPtr ssl) => IsWindows ? WindowsLib.GetCipherInfo(ssl) : IsOsx ? OsxLib.GetCipherInfo(ssl) : UnixLib.GetCipherInfo(ssl);
-
+        
         const int SSL_CTRL_OPTIONS = 32;
         const ContextOptions Default_Context_Options = ContextOptions.SSL_OP_NO_SSLv2 | ContextOptions.SSL_OP_NO_SSLv3;
 

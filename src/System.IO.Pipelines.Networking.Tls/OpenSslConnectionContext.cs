@@ -51,8 +51,7 @@ namespace System.IO.Pipelines.Networking.Tls
 
         public ApplicationLayerProtocolIds NegotiatedProtocol => _negotiatedProtocol;
         public bool ReadyToSend => _readyToSend;
-        public CipherInfo CipherInfo => _ssl != IntPtr.Zero ? Interop.GetCipherInfo(_ssl) : default(CipherInfo);
-
+        
         public unsafe Task DecryptAsync(ReadableBuffer encryptedData, IPipelineWriter decryptedPipeline)
         {
             CustomBio.SetReadBufferPointer(_readBio, ref encryptedData);

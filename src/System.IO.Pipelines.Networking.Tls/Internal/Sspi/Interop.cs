@@ -28,20 +28,7 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.Sspi
 
         [DllImport(Dll, ExactSpelling = true, SetLastError = true)]
         internal unsafe static extern SecurityStatus AcceptSecurityContext(ref SSPIHandle credentialHandle, [In] void* inContextPtr, SecurityBufferDescriptor* inputBuffer, [In] ContextFlags inFlags, [In] Endianness endianness, [In, Out] void* newContextPtr, SecurityBufferDescriptor* outputBuffer, [In, Out] ref ContextFlags attributes, out long timeStamp);
-
-        internal static CipherInfo GetCipherInfo(SSPIHandle _contextPointer)
-        {
-            _SecPkgContext_ConnectionInfo connInfo;
-            QueryContextAttributesW(ref _contextPointer, ContextAttribute.ConnectionInfo, out connInfo);
-            var returnValue = new CipherInfo()
-            {
-                KeySizeInBits = connInfo.dwCipherStrength,
-                Name = $"{connInfo.aiCipher}-{connInfo.dwHashStrength}"
-            };
-            FreeContextBuffer((IntPtr)Unsafe.AsPointer(ref connInfo));
-            return returnValue;
-        }
-
+        
         [DllImport(Dll, ExactSpelling = true, SetLastError = true)]
         internal static unsafe extern SecurityStatus DecryptMessage([In] ref SSPIHandle contextHandle, [In, Out] SecurityBufferDescriptor inputOutput, [In] uint sequenceNumber, uint* qualityOfProtection);
 

@@ -13,6 +13,5 @@ namespace System.IO.Pipelines.Networking.Tls
         Task DecryptAsync(ReadableBuffer encryptedData, IPipelineWriter decryptedPipeline);
         Task EncryptAsync(ReadableBuffer unencryptedData, IPipelineWriter encryptedPipeline);
         bool IsServer { get; }
-        CipherInfo CipherInfo { get; }
     }
 }

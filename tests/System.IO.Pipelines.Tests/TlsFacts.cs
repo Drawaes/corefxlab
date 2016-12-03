@@ -20,6 +20,30 @@ namespace System.IO.Pipelines.Tests
         private static readonly string _certificatePassword = "Test123t";
         private static readonly string _shortTestString = "The quick brown fox jumped over the lazy dog.";
 
+        [Fact]
+        public async Task TestManagedProvider()
+        {
+            using (var cert = new X509Certificate2(_certificatePath, _certificatePassword,X509KeyStorageFlags.Exportable))
+            using (var factory = new PipelineFactory())
+            using (var context = new ManagedSecurityContext(factory, true, cert))
+            using (var clientContext = new OpenSslSecurityContext(factory, "test", false, null, null))
+            {
+                var loopback = new LoopbackPipeline(factory);
+                using (var server = context.CreateSecurePipeline(loopback.ServerPipeline))
+                using (var client = clientContext.CreateSecurePipeline(loopback.ClientPipeline))
+                {
+                    
+
+                    Echo(server);
+                    await client.PerformHandshakeAsync();
+                    //var outputBuffer = client.Output.Alloc();
+                    //outputBuffer.Write(Encoding.UTF8.GetBytes(_shortTestString));
+                    //await outputBuffer.FlushAsync();
+                }
+
+            }
+        }
+
         [WindowsOnlyFact]
         public async Task SspiAplnMatchingProtocol()
         {
@@ -38,7 +62,7 @@ namespace System.IO.Pipelines.Tests
                 }
             }
         }
-                
+
         [NotWindowsFact]
         public async Task OpenSslPipelineAllTheThings()
         {

@@ -36,8 +36,7 @@ namespace System.IO.Pipelines.Networking.Tls
 
         public SSPIHandle ContextHandle => _contextPointer;
         public bool IsServer => _securityContext.IsServer;
-        public CipherInfo CipherInfo => Interop.GetCipherInfo(_contextPointer);
-
+        
         /// <summary>
         /// Without a payload from the client the server will just return straight away.
         /// </summary>

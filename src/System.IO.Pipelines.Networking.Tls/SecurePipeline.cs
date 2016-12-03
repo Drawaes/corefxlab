@@ -21,8 +21,7 @@ namespace System.IO.Pipelines.Networking.Tls
 
         public IPipelineReader Input => _outputPipeline;
         public IPipelineWriter Output => _inputPipeline;
-        public CipherInfo CipherInfo => _contextToDispose.CipherInfo;
-
+        
         public Task<ApplicationLayerProtocolIds> PerformHandshakeAsync()
         {
             return _handShakeCompleted?.Task ?? DoHandshake();
