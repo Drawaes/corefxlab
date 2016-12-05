@@ -17,10 +17,12 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
         private NativeBufferPool _pool;
         private int _nounceSaltLength;
         private int _keySizeInBytes;
+        private readonly string _providerName;
         private static readonly byte[] s_BCRYPT_CHAIN_MODE_CBC = Encoding.Unicode.GetBytes("ChainingModeGCM\0");
 
         public BulkCipherProvider(string provider)
         {
+            _providerName = provider;
             var splitProv = provider.Split('_');
             var parentProv = splitProv[0];
             var ciphers = Interop.CipherAlgorithms;
@@ -44,15 +46,19 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
             {
                 _providerHandle = provPtr;
                 _bufferSizeNeededForState = Interop.GetObjectLength(_providerHandle);
-                if(parentProv == "AES")
+                if (parentProv == "AES")
                 {
-                    var chainingMode = (BulkCipherChainingMode) Enum.Parse(typeof(BulkCipherChainingMode), splitProv[2]);
+                    var chainingMode = (BulkCipherChainingMode)Enum.Parse(typeof(BulkCipherChainingMode), splitProv[2]);
                     _nounceSaltLength = 4;
-                    Interop.SetBlockChainingMode(_providerHandle,chainingMode);
-                    var keySize = int.Parse(splitProv[1]);
-                    Interop.SetKeySize(_providerHandle, keySize);
+                    Interop.SetBlockChainingMode(_providerHandle, chainingMode);
+                    _keySizeInBytes = int.Parse(splitProv[1]) / 8;
+                    var blockMode = Interop.GetBlockChainingMode(_providerHandle);
+                    //Interop.SetKeySize(_providerHandle, _keySizeInBytes * 8);
                 }
-                _keySizeInBytes = Interop.GetKeySizeInBits(_providerHandle) / 8;
+                else
+                {
+                    _keySizeInBytes = Interop.GetKeySizeInBits(_providerHandle) / 8;
+                }
                 _isValid = true;
             }
             catch
@@ -65,6 +71,18 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
         public bool IsValid => _isValid;
         public int NounceSaltLength => _nounceSaltLength;
         public int KeySizeInBytes => _keySizeInBytes;
+        public int BufferSizeNeededForState => _bufferSizeNeededForState;
+
+        public BulkCipherKey GetCipherKey(byte[] key)
+        {
+            var returnKey = new BulkCipherKey(_providerHandle, _pool.Rent(_bufferSizeNeededForState), key);
+            return returnKey;
+        }
+
+        internal void SetBufferPool(NativeBufferPool pool)
+        {
+            _pool = pool;
+        }
 
         public void Dispose()
         {

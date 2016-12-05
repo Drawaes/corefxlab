@@ -120,6 +120,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                 }
             }
             _hmacFactory.Init();
+            _bulkCipherFactory.Init();
         }
 
         public void SetSupported(KeyExchangeCipher keyExchangeAlgo)

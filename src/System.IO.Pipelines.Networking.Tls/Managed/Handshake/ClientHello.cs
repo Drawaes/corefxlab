@@ -82,6 +82,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
                     case ExtensionType.Renegotiation_info:
                     case ExtensionType.Ec_point_formats:
                     case ExtensionType.Heartbeat:
+                    case ExtensionType.Status_request:
+                    case ExtensionType.Signed_certificate_timestamp:
+                    case ExtensionType.Application_layer_protocol_negotiation:
                         readBuffer = readBuffer.Slice(extensionSize);
                         break;
                     case ExtensionType.Server_name:
@@ -92,7 +95,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
                         readBuffer = readBuffer.Slice(extensionSize);
                         break;
                     default:
-                        throw new NotImplementedException();
+                        readBuffer = readBuffer.Slice(extensionSize);
+                        break;
+                        //throw new NotImplementedException();
                 }
             }
         }

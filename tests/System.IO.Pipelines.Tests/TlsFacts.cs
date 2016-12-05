@@ -4,7 +4,9 @@ using System.IO.Pipelines.Networking.Tls;
 using System.IO.Pipelines.Tests.Internal;
 using System.IO.Pipelines.Text.Primitives;
 using System.Linq;
+using System.Net;
 using System.Net.Security;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,26 +23,31 @@ namespace System.IO.Pipelines.Tests
         private static readonly string _shortTestString = "The quick brown fox jumped over the lazy dog.";
 
         [Fact]
-        public async Task TestManagedProvider()
+        public void TestManagedProvider()
         {
-            using (var cert = new X509Certificate2(_certificatePath, _certificatePassword,X509KeyStorageFlags.Exportable))
+            using (var cert = new X509Certificate2(_certificatePath, _certificatePassword, X509KeyStorageFlags.Exportable))
             using (var factory = new PipelineFactory())
+            using (var socketClient = new Networking.Sockets.SocketListener(factory))
             using (var context = new ManagedSecurityContext(factory, true, cert))
-            using (var clientContext = new OpenSslSecurityContext(factory, "test", false, null, null))
+            using (var clientContext = new SecurityContext(factory, "test", false, null))
             {
                 var loopback = new LoopbackPipeline(factory);
-                using (var server = context.CreateSecurePipeline(loopback.ServerPipeline))
-                using (var client = clientContext.CreateSecurePipeline(loopback.ClientPipeline))
-                {
-                    
 
-                    Echo(server);
-                    await client.PerformHandshakeAsync();
-                    //var outputBuffer = client.Output.Alloc();
-                    //outputBuffer.Write(Encoding.UTF8.GetBytes(_shortTestString));
-                    //await outputBuffer.FlushAsync();
-                }
+                var ipEndPoint = new IPEndPoint(IPAddress.Loopback, 443);
+                socketClient.OnConnection(s => context.CreateSecurePipeline(s).PerformHandshakeAsync());
+                socketClient.Start(ipEndPoint);
+                //using (var server = context.CreateSecurePipeline(loopback.ServerPipeline))
+                //using (var client = clientContext.CreateSecurePipeline(loopback.ClientPipeline))
+                //{
 
+
+                //    Echo(server);
+                //    client.PerformHandshakeAsync().Wait();
+                //    //var outputBuffer = client.Output.Alloc();
+                //    //outputBuffer.Write(Encoding.UTF8.GetBytes(_shortTestString));
+                //    //await outputBuffer.FlushAsync();
+                //}
+                Console.ReadLine();
             }
         }
 

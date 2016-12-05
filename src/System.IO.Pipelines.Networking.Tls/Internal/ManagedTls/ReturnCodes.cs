@@ -16,6 +16,7 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         MEM_E_INVALID_LINK = 0x80080010, //An allocation chain contained an invalid linkpointer
         NTE_BAD_FLAGS = 0x80090009, //Invalid flags specified.
         NTE_PERM = 0x80090010, //Access denied.
+        AuthenticationTagMismatch = 0xC000A002,
 
     }
 }

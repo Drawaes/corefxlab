@@ -38,7 +38,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
                 Interop.BCryptOpenAlgorithmProvider(out provPtr, provider, null, _isHmac ? Interop.BCRYPT_ALG_HANDLE_HMAC_FLAG : 0));
             _providerHandle = provPtr;
             _bufferSizeNeededForState = Interop.GetObjectLength(_providerHandle);
-            _blockLength = Interop.GetBlockLength(_providerHandle);
+            _blockLength = Interop.GetHashLength(_providerHandle);
         }
 
         public bool IsValid => _isValid;
@@ -48,6 +48,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
         public HashInstance GetLongRunningHash()
         {
             return new HashInstance(_providerHandle, _pool.Rent(_bufferSizeNeededForState));
+        }
+
+        public unsafe void HMac(byte* output, int outputLength, byte* secret, int secretLength, byte* message, int messageLength)
+        {
+            Interop.CheckReturnOrThrow(Interop.BCryptHash(_providerHandle,secret, secretLength, message, messageLength,output,outputLength ));
         }
 
         public void Dispose()

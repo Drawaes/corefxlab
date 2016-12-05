@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO.Pipelines.Networking.Tls.Managed.Hash;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -42,22 +43,63 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
                 var version = decrypted.Span.Read<ushort>();
                 if (version != 0x0303)
                 {
-                    throw new InvalidOperationException("Bad version after decrypting the client random");
+                    throw new InvalidOperationException("Bad version after decrypting the premaster secret");
                 }
-
+                var cipherSuite = context.CipherSuite;
                 //This is the amount of key data we need to generate
-                var keyLength = context.CipherInfo.BulkCipher.NounceSaltLength + context.CipherInfo.BulkCipher.KeySizeInBytes + context.CipherInfo.Hmac.BlockLength;
+                var keyLength = cipherSuite.BulkCipher.NounceSaltLength + cipherSuite.BulkCipher.KeySizeInBytes;
                 keyLength *= 2;
+                
+                byte[] preMasterSecret = decrypted.ToArray();
+                byte[] masterSecret = new byte[48];
+                
+                P_hash(cipherSuite.Hmac, masterSecret, preMasterSecret, context.SeedBuffer.ToArray());
+                byte[] keyMaterial = new byte[keyLength];
+                context.SetSeedKeyExpansion();
+                
+                P_hash(cipherSuite.Hmac, keyMaterial, masterSecret, context.SeedBuffer.ToArray());
 
+                var clientWrite = keyMaterial.Take(cipherSuite.BulkCipher.KeySizeInBytes).ToArray();
+                var serverWrite = keyMaterial.Skip(cipherSuite.BulkCipher.KeySizeInBytes).Take(cipherSuite.BulkCipher.KeySizeInBytes).ToArray();
 
-                byte[] preMasterSecret = new byte[48];
+                var clientNounce = keyMaterial.Skip((cipherSuite.BulkCipher.KeySizeInBytes) * 2).Take(cipherSuite.BulkCipher.NounceSaltLength).ToArray();
+                var serverNounce = keyMaterial.Skip(cipherSuite.BulkCipher.KeySizeInBytes *2 + cipherSuite.BulkCipher.NounceSaltLength).ToArray();
 
-                //MasterSecretCalculation.CalculateMasterSecret(ref state, preMasterSecret);
-
+                var clientWriteKey = cipherSuite.BulkCipher.GetCipherKey(clientWrite);
+                context.SetClientKeyAndNounce(clientWriteKey, clientNounce);
                 return;
-
             }
             throw new InvalidOperationException();
+        }
+
+        private unsafe static void P_hash(HashProvider hash, byte[] keyMaterial, byte[] secret, byte[] seed)
+        {
+            fixed (byte* secretPtr = secret)
+            {
+                var a1 = stackalloc byte[hash.BlockLength + seed.Length];
+                Span<byte> a1Span = new Span<byte>(a1,hash.BlockLength + seed.Length);
+                Span<byte> seedSpan = new Span<byte>(seed);
+                seedSpan.CopyTo(a1Span.Slice(hash.BlockLength));
+                var seedPtr = a1 + hash.BlockLength;
+                hash.HMac(a1, hash.BlockLength, secretPtr, secret.Length, seedPtr, seed.Length);
+                var currentKeyData = stackalloc byte[hash.BlockLength];
+
+                int keyMaterialIndex = 0;
+                while(true)
+                {
+                    hash.HMac(currentKeyData, hash.BlockLength, secretPtr, secret.Length, a1, hash.BlockLength + seed.Length);
+                    for(int i = 0; i < hash.BlockLength; i ++)
+                    {
+                        keyMaterial[keyMaterialIndex] = currentKeyData[i];
+                        keyMaterialIndex ++;
+                        if(keyMaterialIndex == keyMaterial.Length)
+                        {
+                            return;
+                        }
+                    }
+                    hash.HMac(a1, hash.BlockLength, secretPtr, secret.Length, a1, hash.BlockLength);
+                }
+            }
         }
     }
 }

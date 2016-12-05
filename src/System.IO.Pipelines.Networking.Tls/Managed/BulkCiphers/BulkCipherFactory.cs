@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
     public class BulkCipherFactory
     {
         private readonly BulkCipherProvider[] _providers;
+        private NativeBufferPool _pool;
 
         public BulkCipherFactory()
         {
@@ -36,6 +38,24 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
             return null;
         }
 
-
+        public void Init()
+        {
+            int max = 0;
+            for (int i = 0; i < _providers.Length; i++)
+            {
+                if (_providers[i] != null && _providers[i].BufferSizeNeededForState > max)
+                {
+                    max = _providers[i].BufferSizeNeededForState;
+                }
+            }
+            _pool = new NativeBufferPool(max, 100);
+            for (int i = 0; i < _providers.Length; i++)
+            {
+                if (_providers[i] != null)
+                {
+                    _providers[i].SetBufferPool(_pool);
+                }
+            }
+        }
     }
 }
