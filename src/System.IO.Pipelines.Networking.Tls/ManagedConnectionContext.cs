@@ -155,7 +155,7 @@ namespace System.IO.Pipelines.Networking.Tls
             }
             if(_clientDataEncrypted)
             {
-                System.IO.File.WriteAllText("C:\\Code\\KeyLog\\ClientFinished.txt", BitConverter.ToString(readBuffer.ToArray()));
+                //_handshakeHash.HashData(readBuffer.Slice(8));
 
                 byte[] additionalData = new byte[13];
                 var addSpan = new Span<byte>(additionalData);
@@ -180,9 +180,11 @@ namespace System.IO.Pipelines.Networking.Tls
                 var tag = readBuffer.ToArray();
                 
                 var decData = _clientKey.Decrypt(_clientNounce, encrypted,tag, additionalData);
+                _handshakeHash.HashData(decData);
+                //_handshakeHash.HashData(tag);
                 var hashResult = _handshakeHash.Finish();
                 var verifyData = new byte[12];
-                ClientKeyExchange.P_hash(_cipherSuite.Hmac,verifyData,_masterSecret, Enumerable.Concat(s_clientfinishedLabel,hashResult).ToArray());
+                //ClientKeyExchange.P_hash(_cipherSuite.Hmac,verifyData,_masterSecret, Enumerable.Concat(s_clientfinishedLabel,hashResult).ToArray());
                 //PRF(master_secret, finished_label, Hash(handshake_messages))
                 //[0..verify_data_length - 1];
                 _readyToSend = true;

@@ -46,6 +46,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
                 Interop.CheckReturnOrThrow(Interop.BCryptHashData(_hashHandle, pointer, memory.Length, 0));
             }
         }
+        public void HashData(byte[] buffer)
+        {
+            fixed (byte* ptr = buffer)
+            {
+                Interop.CheckReturnOrThrow(Interop.BCryptHashData(_hashHandle, ptr, buffer.Length, 0));
+            }
+        }
         
         public void Dispose()
         {
