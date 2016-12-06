@@ -45,19 +45,18 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
             try
             {
                 _providerHandle = provPtr;
-                _bufferSizeNeededForState = Interop.GetObjectLength(_providerHandle);
+                _bufferSizeNeededForState = InteropProperties.GetObjectLength(_providerHandle);
                 if (parentProv == "AES")
                 {
                     var chainingMode = (BulkCipherChainingMode)Enum.Parse(typeof(BulkCipherChainingMode), splitProv[2]);
                     _nounceSaltLength = 4;
-                    Interop.SetBlockChainingMode(_providerHandle, chainingMode);
+                    InteropProperties.SetBlockChainingMode(_providerHandle, chainingMode);
                     _keySizeInBytes = int.Parse(splitProv[1]) / 8;
-                    var blockMode = Interop.GetBlockChainingMode(_providerHandle);
-                    //Interop.SetKeySize(_providerHandle, _keySizeInBytes * 8);
-                }
+                    var blockMode = InteropProperties.GetBlockChainingMode(_providerHandle);
+               }
                 else
                 {
-                    _keySizeInBytes = Interop.GetKeySizeInBits(_providerHandle) / 8;
+                    _keySizeInBytes = InteropProperties.GetKeySizeInBits(_providerHandle) / 8;
                 }
                 _isValid = true;
             }
@@ -79,7 +78,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
             return returnKey;
         }
 
-        internal void SetBufferPool(NativeBufferPool pool)
+        public void SetBufferPool(NativeBufferPool pool)
         {
             _pool = pool;
         }

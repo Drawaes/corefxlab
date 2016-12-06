@@ -10,6 +10,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
     {
         public static void ProcessClientHello(ReadableBuffer buffer, ManagedConnectionContext context)
         {
+            var originalBuffer = buffer;
             buffer = buffer.Slice(1); // slice off the message type
             int contentSize = buffer.ReadBigEndian24bit();
             buffer = buffer.Slice(3);
@@ -38,12 +39,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
 
             var sizeOfCipherSuites = buffer.ReadBigEndian<ushort>();
             buffer = buffer.Slice(2);
-            CipherInfo selectedCipher = GetCipher(buffer.Slice(0, sizeOfCipherSuites), context.Ciphers);
+            CipherSuite selectedCipher = GetCipher(buffer.Slice(0, sizeOfCipherSuites), context.Ciphers);
             if (selectedCipher == null)
             {
                 throw new NotSupportedException("No supported cipher suites");
             }
             context.SetCipherSuite(selectedCipher);
+            context.HandshakeHash.HashData(originalBuffer);
             buffer = buffer.Slice(sizeOfCipherSuites);
 
             var numberOfCompressionMethods = buffer.ReadBigEndian<byte>();
@@ -102,7 +104,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
             }
         }
 
-        private static CipherInfo GetCipher(ReadableBuffer buffer, CipherList list)
+        private static CipherSuite GetCipher(ReadableBuffer buffer, CipherList list)
         {
             while (buffer.Length > 0)
             {

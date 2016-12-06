@@ -27,8 +27,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
             _messageWriter.WriteMessage(ref buffer, context);
             
             var messageContent = buffer.BytesWritten - messageContentCurrentSize;
-            Write24BitNumber(messageContent, messageContentSize);
-            context.HandshakeHash.HashData(buffer.AsReadableBuffer().Slice(5));
+            BufferExtensions.Write24BitNumber(messageContent, messageContentSize);
+            if (!context.ServerDataEncrypted)
+            {
+                context.HandshakeHash.HashData(buffer.AsReadableBuffer().Slice(5));
+            }
         }
 
         

@@ -37,14 +37,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
                     }
                 }
                 Buffer.BlockCopy(key, 0, keyBlob, Marshal.SizeOf(typeof(InteropStructs.BCRYPT_KEY_DATA_BLOB)), key.Length);
-                //Interop.CheckReturnOrThrow( Interop.BCryptGenerateSymmetricKey(providerHandle, out handle, null,0,key,key.Length,0));
-                //"BCRYPT_KEY_DATA_BLOB"
                 Interop.CheckReturnOrThrow(Interop.BCryptImportKey(providerHandle, IntPtr.Zero, "KeyDataBlob"
                     , out handle, (IntPtr)memPtr, buffer.Length
                     , keyBlob, keyBlob.Length, 0));
                 _keyHandle = handle;
-                var mode = Interop.GetBlockChainingMode(handle);
-                //_tagLength = Interop.GetAdditionalTagLength(_keyHandle);
             }
             catch
             {
@@ -53,16 +49,51 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
             }
         }
 
+        public unsafe byte[] Encrypt(byte[] nounce, byte[] plainText, byte[] additionalData,out byte[] authTagResult)
+        {
+            var ivLength = InteropProperties.GetBlockLength(_keyHandle);
+            var iv = stackalloc byte[ivLength];
+            var cInfo = new InteropStructs.BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO();
+            cInfo.dwInfoVersion = 1;
+            cInfo.cbSize = Marshal.SizeOf(typeof(InteropStructs.BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO));
+
+            var tag = new byte[16];
+            var cipherText = new byte[plainText.Length];
+            var block = stackalloc byte[16];
+            fixed(void* nPtr = nounce)
+            fixed(void* pPtr = plainText)
+            fixed(void* aPtr = additionalData)
+            fixed(void* tPtr = tag)
+            fixed(void* cPtr = cipherText)
+            {
+                cInfo.cbAuthData = additionalData.Length;
+                cInfo.cbNonce = nounce.Length;
+                cInfo.cbTag = tag.Length;
+                //cInfo.pbMacContext = (IntPtr)aPtr;
+                //cInfo.cbMacContext = additionalData.Length;
+                cInfo.dwFlags = InteropStructs.AuthenticatedCipherModeInfoFlags.None;
+                cInfo.pbAuthData =(IntPtr) aPtr;
+                cInfo.pbNonce = (IntPtr) nPtr;
+                cInfo.pbTag = (IntPtr)tPtr;
+
+                int amountWritten = 0;
+                var result = Interop.BCryptEncrypt(_keyHandle, pPtr, plainText.Length, &cInfo, null,0, cPtr, cipherText.Length, out amountWritten, 0);
+            }
+            authTagResult = tag;
+            return cipherText;
+
+        }
+
         public unsafe byte[] Decrypt(byte[] nounce, byte[] cipherText, byte[] tag, byte[] additionalData)
         {
-            //int blockLength = Interop.GetBlockLength(_keyHandle);
+            int blockLength = InteropProperties.GetBlockLength(_keyHandle);
             var returnValue = new byte[cipherText.Length];
             //var iv = new byte[blockLength];
             //Buffer.BlockCopy(nounce, 0,iv,0,nounce.Length);
-            var ad = new byte[0];
-            fixed(void* nPtr = nounce)
-            fixed(void* tPtr = tag)
-            fixed(void* aPtr = additionalData)
+
+            fixed (void* nPtr = nounce)
+            fixed (void* tPtr = tag)
+            fixed (void* aPtr = additionalData)
             {
                 var cInfo = new InteropStructs.BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO();
                 cInfo.cbNonce = nounce.Length;
@@ -71,12 +102,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
                 cInfo.cbSize = Marshal.SizeOf(typeof(InteropStructs.BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO));
                 cInfo.pbTag = (IntPtr)tPtr;
                 cInfo.cbTag = tag.Length;
-                cInfo.cbAuthData = additionalData.Length;
+                cInfo.cbAuthData = additionalData.Length; 
                 cInfo.pbAuthData = (IntPtr)aPtr;
+                
                 cInfo.dwFlags = InteropStructs.AuthenticatedCipherModeInfoFlags.None;
                 int resultSize;
                 Interop.CheckReturnOrThrow(
-                Interop.BCryptDecrypt(_keyHandle, cipherText, cipherText.Length,ref cInfo, null,0, returnValue
+                Interop.BCryptDecrypt(_keyHandle, cipherText, cipherText.Length, ref cInfo,nounce,nounce.Length, returnValue
                 , cipherText.Length, out resultSize, 0));
             }
             return returnValue;

@@ -67,5 +67,17 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
                 _buffer = null;
             }
         }
+
+        internal byte[] Finish()
+        {
+            int length = InteropProperties.GetHashLength(_hashHandle);
+            byte[] returnValue = new byte[length];
+            fixed (void* ptr = returnValue)
+            {
+                Interop.CheckReturnOrThrow(Interop.BCryptFinishHash(_hashHandle,ptr, length,0));
+            }
+            Dispose();
+            return returnValue;
+        }
     }
 }

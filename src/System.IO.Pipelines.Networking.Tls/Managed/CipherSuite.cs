@@ -2,12 +2,13 @@
 using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers;
 using System.IO.Pipelines.Networking.Tls.Managed.Hash;
+using System.IO.Pipelines.Networking.Tls.Managed.KeyExchange;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed
 {
-    public class CipherInfo
+    public class CipherSuite
     {
         private readonly string _cipherString;
         private readonly ushort _cipherId;
@@ -16,7 +17,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
         private readonly HashProvider _hash;
         private readonly BulkCipherProvider _bulkCipher;
 
-        public CipherInfo(ushort cipherId, string cipherString, BulkCipherFactory cipherFactory, HashFactory hmacFactory)
+        public CipherSuite(ushort cipherId, string cipherString, BulkCipherFactory cipherFactory, HashFactory hmacFactory)
         {
             _cipherString = cipherString;
             _cipherId = cipherId;

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.Hash;
+using System.IO.Pipelines.Networking.Tls.Managed.KeyExchange;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -49,35 +50,37 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
                 //This is the amount of key data we need to generate
                 var keyLength = cipherSuite.BulkCipher.NounceSaltLength + cipherSuite.BulkCipher.KeySizeInBytes;
                 keyLength *= 2;
-                
+
                 byte[] preMasterSecret = decrypted.ToArray();
                 byte[] masterSecret = new byte[48];
-                
+
                 P_hash(cipherSuite.Hmac, masterSecret, preMasterSecret, context.SeedBuffer.ToArray());
                 byte[] keyMaterial = new byte[keyLength];
                 context.SetSeedKeyExpansion();
-                
+                context.SetMasterSecret(masterSecret);
                 P_hash(cipherSuite.Hmac, keyMaterial, masterSecret, context.SeedBuffer.ToArray());
 
                 var clientWrite = keyMaterial.Take(cipherSuite.BulkCipher.KeySizeInBytes).ToArray();
                 var serverWrite = keyMaterial.Skip(cipherSuite.BulkCipher.KeySizeInBytes).Take(cipherSuite.BulkCipher.KeySizeInBytes).ToArray();
 
                 var clientNounce = keyMaterial.Skip((cipherSuite.BulkCipher.KeySizeInBytes) * 2).Take(cipherSuite.BulkCipher.NounceSaltLength).ToArray();
-                var serverNounce = keyMaterial.Skip(cipherSuite.BulkCipher.KeySizeInBytes *2 + cipherSuite.BulkCipher.NounceSaltLength).ToArray();
-
+                var serverNounce = keyMaterial.Skip(cipherSuite.BulkCipher.KeySizeInBytes * 2 + cipherSuite.BulkCipher.NounceSaltLength).ToArray();
+                
                 var clientWriteKey = cipherSuite.BulkCipher.GetCipherKey(clientWrite);
+                var serverWriteKey = cipherSuite.BulkCipher.GetCipherKey(serverWrite);
                 context.SetClientKeyAndNounce(clientWriteKey, clientNounce);
+                context.SetServerKeyAndNounce(serverWriteKey, serverNounce);
                 return;
             }
             throw new InvalidOperationException();
         }
 
-        private unsafe static void P_hash(HashProvider hash, byte[] keyMaterial, byte[] secret, byte[] seed)
+        internal unsafe static void P_hash(HashProvider hash, byte[] keyMaterial, byte[] secret, byte[] seed)
         {
             fixed (byte* secretPtr = secret)
             {
                 var a1 = stackalloc byte[hash.BlockLength + seed.Length];
-                Span<byte> a1Span = new Span<byte>(a1,hash.BlockLength + seed.Length);
+                Span<byte> a1Span = new Span<byte>(a1, hash.BlockLength + seed.Length);
                 Span<byte> seedSpan = new Span<byte>(seed);
                 seedSpan.CopyTo(a1Span.Slice(hash.BlockLength));
                 var seedPtr = a1 + hash.BlockLength;
@@ -85,14 +88,14 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
                 var currentKeyData = stackalloc byte[hash.BlockLength];
 
                 int keyMaterialIndex = 0;
-                while(true)
+                while (true)
                 {
                     hash.HMac(currentKeyData, hash.BlockLength, secretPtr, secret.Length, a1, hash.BlockLength + seed.Length);
-                    for(int i = 0; i < hash.BlockLength; i ++)
+                    for (int i = 0; i < hash.BlockLength; i++)
                     {
                         keyMaterial[keyMaterialIndex] = currentKeyData[i];
-                        keyMaterialIndex ++;
-                        if(keyMaterialIndex == keyMaterial.Length)
+                        keyMaterialIndex++;
+                        if (keyMaterialIndex == keyMaterial.Length)
                         {
                             return;
                         }

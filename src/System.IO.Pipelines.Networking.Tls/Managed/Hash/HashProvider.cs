@@ -37,8 +37,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
             Interop.CheckReturnOrThrow(
                 Interop.BCryptOpenAlgorithmProvider(out provPtr, provider, null, _isHmac ? Interop.BCRYPT_ALG_HANDLE_HMAC_FLAG : 0));
             _providerHandle = provPtr;
-            _bufferSizeNeededForState = Interop.GetObjectLength(_providerHandle);
-            _blockLength = Interop.GetHashLength(_providerHandle);
+            _bufferSizeNeededForState = InteropProperties.GetObjectLength(_providerHandle);
+            _blockLength = InteropProperties.GetHashLength(_providerHandle);
         }
 
         public bool IsValid => _isValid;
