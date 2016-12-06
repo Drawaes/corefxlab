@@ -6,6 +6,7 @@ namespace System.IO.Pipelines.Networking.Tls
     {
         int TrailerSize { get; set; }
         int HeaderSize { get; set; }
+        int MaxBlockSize { get;}
         bool ReadyToSend { get; }
         ApplicationLayerProtocolIds NegotiatedProtocol { get; }
         Task ProcessContextMessageAsync(ReadableBuffer readBuffer, IPipelineWriter writer);

@@ -24,6 +24,14 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         }
 
         [StructLayout(LayoutKind.Sequential)]
+        public struct BCRYPT_AUTH_TAG_LENGTHS_STRUCT
+        {
+            public int dwMinLength;
+            public int dwMaxLength;
+            public int dwIncrement;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
         internal struct BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO
         {
             internal int cbSize;
@@ -42,7 +50,7 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         }
 
         [Flags]
-        internal enum AuthenticatedCipherModeInfoFlags:uint
+        internal enum AuthenticatedCipherModeInfoFlags : uint
         {
             None = 0x00000000,
             ChainCalls = 0x00000001,                           // BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG

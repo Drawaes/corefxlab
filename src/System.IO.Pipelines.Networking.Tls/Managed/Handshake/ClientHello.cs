@@ -14,7 +14,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
             buffer = buffer.Slice(1); // slice off the message type
             int contentSize = buffer.ReadBigEndian24bit();
             buffer = buffer.Slice(3);
-            if(buffer.Length != contentSize)
+            if (buffer.Length != contentSize)
             {
                 throw new ArgumentOutOfRangeException("Content length doesn't match the amount of data we have");
             }
@@ -39,7 +39,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
 
             var sizeOfCipherSuites = buffer.ReadBigEndian<ushort>();
             buffer = buffer.Slice(2);
-            CipherSuite selectedCipher = GetCipher(buffer.Slice(0, sizeOfCipherSuites), context.Ciphers);
+            CipherSuite selectedCipher = GetCipher(buffer.Slice(0, sizeOfCipherSuites), context.SecurityContext.Ciphers);
             if (selectedCipher == null)
             {
                 throw new NotSupportedException("No supported cipher suites");
@@ -64,10 +64,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
             {
                 throw new IndexOutOfRangeException("When processing the extensions found an incorrect length");
             }
-            ProcessExtensions(buffer);
+            ProcessExtensions(buffer, context);
         }
 
-        private static void ProcessExtensions(ReadableBuffer readBuffer)
+        private static void ProcessExtensions(ReadableBuffer readBuffer, ManagedConnectionContext context)
         {
             while (readBuffer.Length > 0)
             {
@@ -75,9 +75,14 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
                 readBuffer = readBuffer.Slice(2);
                 var extensionSize = readBuffer.ReadBigEndian<ushort>();
                 readBuffer = readBuffer.Slice(2);
+                var extensionBuffer = readBuffer.Slice(0, extensionSize);
+                readBuffer = readBuffer.Slice(extensionSize);
 
                 switch (extensionType)
                 {
+                    case ExtensionType.Application_layer_protocol_negotiation:
+                        ExtensionAlpn(context, extensionBuffer);
+                        break;
                     case ExtensionType.Supported_groups:
                     case ExtensionType.SessionTicket:
                     case ExtensionType.Extended_master_secret:
@@ -86,21 +91,39 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
                     case ExtensionType.Heartbeat:
                     case ExtensionType.Status_request:
                     case ExtensionType.Signed_certificate_timestamp:
-                    case ExtensionType.Application_layer_protocol_negotiation:
-                        readBuffer = readBuffer.Slice(extensionSize);
-                        break;
                     case ExtensionType.Server_name:
-                        //state.RequiresServerName = 1;
-                        readBuffer = readBuffer.Slice(extensionSize);
-                        break;
                     case ExtensionType.Signature_algorithms:
-                        readBuffer = readBuffer.Slice(extensionSize);
-                        break;
                     default:
-                        readBuffer = readBuffer.Slice(extensionSize);
                         break;
-                        //throw new NotImplementedException();
                 }
+            }
+        }
+
+        private static void ExtensionAlpn(ManagedConnectionContext context, ReadableBuffer extensionBuffer)
+        {
+            Span<byte> protosToCheck;
+            if (extensionBuffer.IsSingleSpan)
+            {
+                protosToCheck = extensionBuffer.First.Span;
+            }
+            else
+            {
+                protosToCheck = new Span<byte>(extensionBuffer.ToArray());
+            }
+            protosToCheck = protosToCheck.Slice(2);
+            while (protosToCheck.Length > 0)
+            {
+                ApplicationLayerProtocolIds protoId;
+                var valToCheck = protosToCheck.Slice(1, protosToCheck.Read<byte>());
+                if (ApplicationLayerProtocolExtension.TryGetNegotiatedProtocol(valToCheck, out protoId))
+                {
+                    if ((context.SecurityContext.AlpnSupportedProtocols & protoId) > 0)
+                    {
+                        context.NegotiatedProtocol = protoId;
+                        break;
+                    }
+                }
+                protosToCheck = protosToCheck.Slice(valToCheck.Length + 1);
             }
         }
 

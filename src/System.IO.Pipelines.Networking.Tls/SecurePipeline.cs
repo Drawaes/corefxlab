@@ -144,7 +144,7 @@ namespace System.IO.Pipelines.Networking.Tls
         private async void StartWriting()
         {
             await PerformHandshakeAsync();
-            var maxBlockSize = (SecurityContext.BlockSize - _contextToDispose.HeaderSize - _contextToDispose.TrailerSize);
+            var maxBlockSize = (_contextToDispose.MaxBlockSize - _contextToDispose.HeaderSize - _contextToDispose.TrailerSize);
             try
             {
                 while (true)

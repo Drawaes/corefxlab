@@ -5,19 +5,19 @@ namespace System.IO.Pipelines.Networking.Tls
     internal static class ApplicationLayerProtocolExtension
     {
         //Source iana registry http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
-        private static readonly byte[] s_http11 = {0x68, 0x74, 0x74, 0x70, 0x2f, 0x31, 0x2e, 0x31}; //("http/1.1")
-        private static readonly byte[] s_spdy1 = {0x73, 0x70, 0x64, 0x79, 0x2f, 0x31}; //("spdy/1")
-        private static readonly byte[] s_spdy2 = {0x73, 0x70, 0x64, 0x79, 0x2f, 0x32}; //("spdy/2")
-        private static readonly byte[] s_spdy3 = {0x73, 0x70, 0x64, 0x79, 0x2f, 0x33}; //("spdy/3")
-        private static readonly byte[] s_traversalUsingRelaysAroundNat = {0x73, 0x74, 0x75, 0x6E, 0x2E, 0x74, 0x75, 0x72,0x6E}; //("stun.turn")
-        private static readonly byte[] s_natDiscoveryUsingSessionTraversalUtilitiesForNat = {0x73, 0x74, 0x75, 0x6E, 0x2E,0x6e, 0x61, 0x74, 0x2d, 0x64, 0x69, 0x73, 0x63, 0x6f, 0x76, 0x65, 0x72, 0x79}; //("stun.nat-discovery")
-        private static readonly byte[] s_http2overTls = {0x68, 0x32}; //("h2")
-        private static readonly byte[] s_http2overTcp = {0x68, 0x32, 0x63}; //("h2c")
-        private static readonly byte[] s_webRtcMediaAndData = {0x77, 0x65, 0x62, 0x72, 0x74, 0x63}; //("webrtc")
-        private static readonly byte[] s_confidentialWebRtcMediaAndData = {0x63, 0x2d, 0x77, 0x65, 0x62, 0x72, 0x74, 0x63}; //("c-webrtc")
-        private static readonly byte[] s_ftp = {0x66, 0x74, 0x70}; //("ftp")
+        private static readonly byte[] s_http11 = { 0x68, 0x74, 0x74, 0x70, 0x2f, 0x31, 0x2e, 0x31 }; //("http/1.1")
+        private static readonly byte[] s_spdy1 = { 0x73, 0x70, 0x64, 0x79, 0x2f, 0x31 }; //("spdy/1")
+        private static readonly byte[] s_spdy2 = { 0x73, 0x70, 0x64, 0x79, 0x2f, 0x32 }; //("spdy/2")
+        private static readonly byte[] s_spdy3 = { 0x73, 0x70, 0x64, 0x79, 0x2f, 0x33 }; //("spdy/3")
+        private static readonly byte[] s_traversalUsingRelaysAroundNat = { 0x73, 0x74, 0x75, 0x6E, 0x2E, 0x74, 0x75, 0x72, 0x6E }; //("stun.turn")
+        private static readonly byte[] s_natDiscoveryUsingSessionTraversalUtilitiesForNat = { 0x73, 0x74, 0x75, 0x6E, 0x2E, 0x6e, 0x61, 0x74, 0x2d, 0x64, 0x69, 0x73, 0x63, 0x6f, 0x76, 0x65, 0x72, 0x79 }; //("stun.nat-discovery")
+        private static readonly byte[] s_http2overTls = { 0x68, 0x32 }; //("h2")
+        private static readonly byte[] s_http2overTcp = { 0x68, 0x32, 0x63 }; //("h2c")
+        private static readonly byte[] s_webRtcMediaAndData = { 0x77, 0x65, 0x62, 0x72, 0x74, 0x63 }; //("webrtc")
+        private static readonly byte[] s_confidentialWebRtcMediaAndData = { 0x63, 0x2d, 0x77, 0x65, 0x62, 0x72, 0x74, 0x63 }; //("c-webrtc")
+        private static readonly byte[] s_ftp = { 0x66, 0x74, 0x70 }; //("ftp")
 
-        private static readonly byte[][] _allProtocols =
+        internal static readonly byte[][] _allProtocols =
         {
             s_http11,
             s_http2overTls,
@@ -32,7 +32,7 @@ namespace System.IO.Pipelines.Networking.Tls
             s_spdy3,
         };
 
-        private static readonly ApplicationLayerProtocolIds[] s_listOfProtocolIds =(ApplicationLayerProtocolIds[]) Enum.GetValues(typeof(ApplicationLayerProtocolIds));
+        private static readonly ApplicationLayerProtocolIds[] s_listOfProtocolIds = (ApplicationLayerProtocolIds[])Enum.GetValues(typeof(ApplicationLayerProtocolIds));
 
         //https://tools.ietf.org/html/rfc5246#section-8.1
         //As per the above RFC extensions have size first (2bytes) then the extension type (4bytes) then 2 more bytes
@@ -74,9 +74,9 @@ namespace System.IO.Pipelines.Networking.Tls
             short listLength = 0;
             for (int i = 0; i < s_listOfProtocolIds.Length; i++)
             {
-                if (((int) s_listOfProtocolIds.GetValue(i) & (int) supportedProtocols) > 0)
+                if (((int)s_listOfProtocolIds.GetValue(i) & (int)supportedProtocols) > 0)
                 {
-                    listLength += (short) (_allProtocols[i].Length + 1);
+                    listLength += (short)(_allProtocols[i - 1].Length + 1);
                 }
             }
             byte[] returnValue;
@@ -108,10 +108,10 @@ namespace System.IO.Pipelines.Networking.Tls
         {
             for (int i = 0; i < s_listOfProtocolIds.Length; i++)
             {
-                if (((int) s_listOfProtocolIds.GetValue(i) & (int) supportedProtocols) > 0)
+                if (((int)s_listOfProtocolIds.GetValue(i) & (int)supportedProtocols) > 0)
                 {
-                    var value = _allProtocols[i];
-                    spa.Write((byte) value.Length);
+                    var value = _allProtocols[i - 1];
+                    spa.Write((byte)value.Length);
                     spa = spa.Slice(1);
                     var valueSpan = new Span<byte>(value);
                     valueSpan.CopyTo(spa);
@@ -120,17 +120,28 @@ namespace System.IO.Pipelines.Networking.Tls
             }
         }
 
-        internal static ApplicationLayerProtocolIds GetNegotiatedProtocol(Span<byte> matchedValue)
+        internal static bool TryGetNegotiatedProtocol(Span<byte> matchedValue, out ApplicationLayerProtocolIds protocolId)
         {
             for (int i = 1; i < _allProtocols.Length; i++)
             {
                 var proto = _allProtocols[i];
                 if (matchedValue.SequenceEqual(proto))
                 {
-                    return (ApplicationLayerProtocolIds) (1 << (i - 1));
+                    protocolId = (ApplicationLayerProtocolIds)(1 << (i));
+                    return true;
                 }
             }
-            throw new ArgumentOutOfRangeException($"Could not match the negotiated protocol to a valid protocol");
+            protocolId = ApplicationLayerProtocolIds.None;
+            return false;
+        }
+        internal static ApplicationLayerProtocolIds GetNegotiatedProtocol(Span<byte> matchedValue)
+        {
+            ApplicationLayerProtocolIds proto;
+            if (!TryGetNegotiatedProtocol(matchedValue, out proto))
+            {
+                throw new ArgumentOutOfRangeException($"Could not match the negotiated protocol to a valid protocol");
+            }
+            return proto;
         }
     }
 }

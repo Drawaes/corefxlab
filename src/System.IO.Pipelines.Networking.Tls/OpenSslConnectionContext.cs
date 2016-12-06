@@ -51,7 +51,9 @@ namespace System.IO.Pipelines.Networking.Tls
 
         public ApplicationLayerProtocolIds NegotiatedProtocol => _negotiatedProtocol;
         public bool ReadyToSend => _readyToSend;
-        
+        //Current fixed block size (4k - 1 64 byte cacheline), should be from the pipeline factory in the future
+        public int MaxBlockSize => 1024 * 4 - 64;
+
         public unsafe Task DecryptAsync(ReadableBuffer encryptedData, IPipelineWriter decryptedPipeline)
         {
             CustomBio.SetReadBufferPointer(_readBio, ref encryptedData);

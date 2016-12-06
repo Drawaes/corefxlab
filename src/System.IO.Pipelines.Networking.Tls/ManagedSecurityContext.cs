@@ -16,9 +16,15 @@ namespace System.IO.Pipelines.Networking.Tls
         private IntPtr _privateKeyHandle;
         private KeyExchangeCipher _keyExchangeAlgo;
         private CipherList _cipherList;
-        
+
         public ManagedSecurityContext(PipelineFactory factory, bool isServer, X509Certificate2 certificate)
+            :this(factory, isServer, certificate, ApplicationLayerProtocolIds.None)
         {
+
+        }
+        public ManagedSecurityContext(PipelineFactory factory, bool isServer, X509Certificate2 certificate, ApplicationLayerProtocolIds alpnSupportedProtocols)
+        {
+            AlpnSupportedProtocols = alpnSupportedProtocols;
             if (isServer && certificate == null)
             {
                 throw new ArgumentException("We need a certificate to load if you want to run in server mode");
@@ -41,6 +47,7 @@ namespace System.IO.Pipelines.Networking.Tls
         internal X509Certificate2 Certificate => _certificate;
         internal IntPtr PrivateKeyHandle => _privateKeyHandle;
         public CipherList Ciphers => _cipherList;
+        
 
         public ISecurePipeline CreateSecurePipeline(IPipelineConnection pipeline)
         {

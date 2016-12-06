@@ -77,7 +77,8 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
                                                            [In, Out, MarshalAs(UnmanagedType.LPArray)] byte[] pbIV,
                                                            int cbIV, [Out, MarshalAs(UnmanagedType.LPArray)] byte[] pbOutput,
                                                            int cbOutput, [Out] out int pcbResult, int dwFlags);
-        
+        [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
+        internal static extern ReturnCodes BCryptDecrypt(IntPtr hKey, void* pbInput, int cbInput, void* pPaddingInfo, void* pbIV, int cbIV, void* pbOutput, int cbOutput, out int pcbResult, int dwFlags);
         [DllImport(Dll,ExactSpelling =true,SetLastError =true, CharSet =CharSet.Unicode)]
         internal static extern ReturnCodes BCryptEncrypt(IntPtr hKey, void* pbInput,int cbInput,void* pPaddingInfo, void* pbIV, uint cbIV, void* pbOutput, int cbOutput, out int pcbResult,uint  dwFlags);
         

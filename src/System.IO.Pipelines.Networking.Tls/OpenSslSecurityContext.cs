@@ -58,7 +58,7 @@ namespace System.IO.Pipelines.Networking.Tls
         internal InteropKeys.PK12Certificate CertificateInformation => _certificateInformation;
         internal IntPtr AplnBuffer => _alpnHandle.AddrOfPinnedObject();
         internal int AplnBufferLength => _alpnSupportedProtocolsBuffer?.Length ?? 0;
-
+        
         private unsafe void SetupAlpn()
         {
             if (_alpnSupportedProtocols > 0)

@@ -4,6 +4,7 @@ using System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using static System.IO.Pipelines.Networking.Tls.Internal.ManagedTls.InteropStructs;
 
 namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
 {
@@ -23,12 +24,12 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         internal extern static ReturnCodes BCryptSetProperty(IntPtr bCryptHandle, string pszProperty, ref int pbOutput, int cbOutput, uint dwFlags);
 
         private const string BCRYPT_OBJECT_LENGTH = "ObjectLength";
+        private const string BCRYPT_AUTH_TAG_LENGTH = "AuthTagLength";
         private const string BCRYPT_BLOCK_LENGTH = "BlockLength";
         private const string BCRYPT_CHAINING_MODE = "ChainingMode";
         private const string BCRYPT_KEY_LENGTH = "KeyLength";
         private const string BCRYPT_HASH_LENGTH = "HashDigestLength";
         private const string BCRYPT_HASH_BLOCK_LENGTH = "HashBlockLength";
-        private const string BCRYPT_AUTH_TAG_LENGTH = "AuthTagLength";
         private const string BCRYPT_CHAIN_MODE_CBC = "ChainingModeCBC";
         private const string BCRYPT_CHAIN_MODE_GCM = "ChainingModeGCM";
 
@@ -37,6 +38,15 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
             return GetStringProperty(provider, BCRYPT_CHAINING_MODE);
         }
 
+        public static BCRYPT_AUTH_TAG_LENGTHS_STRUCT GetAuthTagLengths(IntPtr provider)
+        {
+            var size = sizeof(BCRYPT_AUTH_TAG_LENGTHS_STRUCT);
+            var output = default(BCRYPT_AUTH_TAG_LENGTHS_STRUCT);
+            int result;
+            BCryptGetProperty(provider, BCRYPT_AUTH_TAG_LENGTH, &output, size, out result, 0);
+            return output;
+        }
+        
         public static void SetBlockChainingMode(IntPtr provider, BulkCipherChainingMode chainingMode)
         {
             string value;

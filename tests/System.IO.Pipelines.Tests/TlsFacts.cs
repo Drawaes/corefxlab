@@ -25,86 +25,13 @@ namespace System.IO.Pipelines.Tests
         private static readonly string _shortTestString = "The quick brown fox jumped over the lazy dog.";
 
         [Fact]
-        public void TestAESGCM()
-        {
-            //NIST Test Vector 4
-            //var keyString = "feffe9928665731c6d6a8f9467308308";
-            //var plainTextString = "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39";
-            //var authDataString = "feedfacedeadbeeffeedfacedeadbeefabaddad2";
-            //var ivString = "cafebabefacedbaddecaf888";
-            //var cipherString = "42831ec2217774244b7221b784d0d49ce3aa212f2c02a4e035c17e2329aca12e21d514b25466931c7d8f6a5aac84aa051ba30b396a0aac973d58e091";
-            //var tagString = "5bc94fbc3221a5db94fae95ae7121a47";
-            var keyString = "6E-D8-4B-03-B6-33-10-D8-FA-0A-FD-DF-20-53-8E-CE-A7-77-DB-E3-07-30-C4-8D-9B-5D-7F-1F-FA-82-81-66";
-            var plainTextString = "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39";
-            var authDataString = "00-00-00-00-00-00-00-00-16-03-03-00-10";
-            var ivString = "FA-6A-22-60-D5-00-B8-76-FC-E8-F2-59";
-            var cipherString = "01-A3-76-F3-2F-A4-03-C8-F4-1E-22-F7-8A-B6-B2-28";
-            var tagString = "56-51-C0-EC-3F-DE-10-BE-AF-41-F1-81-55-07-08-B4";
-
-            var key = ConvertHexStringToByteArray(keyString);
-            var iv = ConvertHexStringToByteArray(ivString);
-
-            var add = ConvertHexStringToByteArray(authDataString);
-            var plainText = ConvertHexStringToByteArray(plainTextString);
-            var cipherText = ConvertHexStringToByteArray(cipherString);
-            var authTag = ConvertHexStringToByteArray(tagString);
-
-            var providerName = "AES_128_GCM";
-            var provider = new Networking.Tls.Managed.BulkCiphers.BulkCipherProvider(providerName);
-            var bufferPool = new NativeBufferPool(provider.BufferSizeNeededForState);
-            provider.SetBufferPool(bufferPool);
-            var keyHandle = provider.GetCipherKey(key);
-            //byte[] authTagResult;
-            //var result = keyHandle.Encrypt(iv, plainText, add, out authTagResult);
-            //if (!result.SequenceEqual(cipherText))
-            //{
-            //    throw new NotImplementedException();
-            //}
-            var decryptedData = keyHandle.Decrypt(iv, cipherText, authTag, add);
-
-            if (!decryptedData.SequenceEqual(plainText))
-            {
-                throw new InvalidOperationException();
-            }
-
-            
-
-            //    sb.AppendLine(BitConverter.ToString(new byte[] { cipherText[i],result[i]}));
-            //}
-            //sb.AppendLine("--------------------------------------------- Auth Tag---------------------");
-            //for(int i = 0; i < authTag.Length; i++)
-            //{
-            //    sb.AppendLine(BitConverter.ToString(new byte[] { authTag[i], authTagResult[i]}));
-            //}
-            //File.WriteAllText("C:\\Code\\compare.txt",sb.ToString());
-        }
-
-        public static byte[] ConvertHexStringToByteArray(string hexString)
-        {
-            hexString = hexString.Replace("-",string.Empty);
-            if (hexString.Length % 2 != 0)
-            {
-                throw new ArgumentException(String.Format(CultureInfo.InvariantCulture, "The binary key cannot have an odd number of digits: {0}", hexString));
-            }
-
-            byte[] HexAsBytes = new byte[hexString.Length / 2];
-            for (int index = 0; index < HexAsBytes.Length; index++)
-            {
-                string byteValue = hexString.Substring(index * 2, 2);
-                HexAsBytes[index] = byte.Parse(byteValue, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-            }
-
-            return HexAsBytes;
-        }
-
-        [Fact]
         public async Task TestManagedProvider()
         {
             using (var cert = new X509Certificate2(_certificatePath, _certificatePassword, X509KeyStorageFlags.Exportable))
             using (var factory = new PipelineFactory())
             using (var socketClient = new Networking.Sockets.SocketListener(factory))
-            using (var context = new ManagedSecurityContext(factory, true, cert))
-            using (var clientContext = new OpenSslSecurityContext(factory, "test", false, _certificatePath, _certificatePassword))
+            using (var context = new ManagedSecurityContext(factory, true, cert, ApplicationLayerProtocolIds.Http2OverTls | ApplicationLayerProtocolIds.Http11))
+            using (var clientContext = new SecurityContext(factory, "test", false, cert, ApplicationLayerProtocolIds.Http2OverTls))
             {
                 var loopback = new LoopbackPipeline(factory);
 
@@ -114,13 +41,30 @@ namespace System.IO.Pipelines.Tests
                 using (var server = context.CreateSecurePipeline(loopback.ServerPipeline))
                 using (var client = clientContext.CreateSecurePipeline(loopback.ClientPipeline))
                 {
-
-
                     Echo(server);
-                    client.PerformHandshakeAsync().Wait();
-                    var outputBuffer = client.Output.Alloc();
-                    outputBuffer.Write(Encoding.UTF8.GetBytes(_shortTestString));
-                    await outputBuffer.FlushAsync();
+                    var protocol = await client.PerformHandshakeAsync();
+                    Assert.Equal(ApplicationLayerProtocolIds.Http2OverTls, protocol);
+                    for (int i = 0; i < 10; i++)
+                    {
+                        var outputBuffer = client.Output.Alloc();
+                        outputBuffer.Write(Encoding.UTF8.GetBytes(_shortTestString));
+                        await outputBuffer.FlushAsync();
+
+                        //Now check we get the same thing back
+                        string resultString;
+                        while (true)
+                        {
+                            var result = await client.Input.ReadAsync();
+                            if (result.Buffer.Length >= _shortTestString.Length)
+                            {
+                                resultString = result.Buffer.GetUtf8String();
+                                client.Input.Advance(result.Buffer.End);
+                                break;
+                            }
+                            client.Input.Advance(result.Buffer.Start, result.Buffer.End);
+                        }
+                        Assert.Equal(_shortTestString, resultString);
+                    }
                 }
             }
         }

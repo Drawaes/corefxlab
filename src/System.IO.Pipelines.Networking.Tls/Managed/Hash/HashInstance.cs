@@ -7,11 +7,11 @@ using System.Threading.Tasks;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
 {
-    public unsafe struct HashInstance:IDisposable
+    public unsafe struct HashInstance : IDisposable
     {
         private OwnedMemory<byte> _buffer;
         private IntPtr _hashHandle;
-
+        
         public HashInstance(IntPtr providerHandle, OwnedMemory<byte> buffer)
         {
             try
@@ -53,10 +53,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
                 Interop.CheckReturnOrThrow(Interop.BCryptHashData(_hashHandle, ptr, buffer.Length, 0));
             }
         }
-        
+
         public void Dispose()
         {
-            if(_hashHandle != IntPtr.Zero)
+            if (_hashHandle != IntPtr.Zero)
             {
                 try
                 {
@@ -68,7 +68,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
 
                 }
             }
-            if(_buffer != null)
+            if (_buffer != null)
             {
                 _buffer.Release();
                 _buffer = null;
@@ -81,7 +81,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
             byte[] returnValue = new byte[length];
             fixed (void* ptr = returnValue)
             {
-                Interop.CheckReturnOrThrow(Interop.BCryptFinishHash(_hashHandle,ptr, length,0));
+                Interop.CheckReturnOrThrow(Interop.BCryptFinishHash(_hashHandle, ptr, length, 0));
             }
             Dispose();
             return returnValue;

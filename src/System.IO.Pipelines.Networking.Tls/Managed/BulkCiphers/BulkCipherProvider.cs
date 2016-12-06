@@ -18,8 +18,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
         private int _nounceSaltLength;
         private int _keySizeInBytes;
         private readonly string _providerName;
-        private static readonly byte[] s_BCRYPT_CHAIN_MODE_CBC = Encoding.Unicode.GetBytes("ChainingModeGCM\0");
-
+        
         public BulkCipherProvider(string provider)
         {
             _providerName = provider;
