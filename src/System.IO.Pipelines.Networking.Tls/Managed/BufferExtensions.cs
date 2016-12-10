@@ -15,6 +15,15 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
             return (int)contentSize;
         }
 
+        internal static int Read32BitNumber(this byte[] buffer, int startIndex = 0)
+        {
+            int value = buffer[startIndex];
+            value |= buffer[startIndex + 1] << 8;
+            value |= buffer[startIndex + 2] << 16;
+            value |= buffer[startIndex + 3] << 24;
+            return value;
+        }
+
         internal static void Write24BitNumber(int numberToWrite, Memory<byte> buffer)
         {
             buffer.Span.Write((byte)(((numberToWrite & 0xFF0000) >> 16)));

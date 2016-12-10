@@ -26,7 +26,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
                 {
                     throw new NotImplementedException();
                 }
-                byte[] keyBlob = new byte[Marshal.SizeOf(typeof(InteropStructs.BCRYPT_KEY_DATA_BLOB)) + key.Length];
+                byte[] keyBlob = new byte[Marshal.SizeOf<InteropStructs.BCRYPT_KEY_DATA_BLOB>() + key.Length];
                 unsafe
                 {
                     fixed (byte* pbKeyBlob = keyBlob)
@@ -37,7 +37,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
                         pkeyDataBlob->cbKeyData = key.Length;
                     }
                 }
-                Buffer.BlockCopy(key, 0, keyBlob, Marshal.SizeOf(typeof(InteropStructs.BCRYPT_KEY_DATA_BLOB)), key.Length);
+                Buffer.BlockCopy(key, 0, keyBlob, Marshal.SizeOf<InteropStructs.BCRYPT_KEY_DATA_BLOB>(), key.Length);
                 Interop.CheckReturnOrThrow(Interop.BCryptImportKey(providerHandle, IntPtr.Zero, "KeyDataBlob"
                     , out handle, (IntPtr)memPtr, buffer.Length
                     , keyBlob, keyBlob.Length, 0));
@@ -75,7 +75,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
             var tag = stackalloc byte[16];
             var cInfo = new InteropStructs.BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO();
             cInfo.dwInfoVersion = 1;
-            cInfo.cbSize = Marshal.SizeOf(typeof(InteropStructs.BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO));
+            cInfo.cbSize = Marshal.SizeOf<InteropStructs.BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO>();
             cInfo.cbAuthData = 13;
             cInfo.pbAuthData = (IntPtr)additionalData;
             cInfo.pbTag = (IntPtr)tag;
@@ -164,6 +164,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
             {
                 
                 void* outputBuffer;
+                var outputBookMark = buffer;
                 buffer.First.TryGetPointer(out outputBuffer);
                 buffer = buffer.Slice(8);
                 //Nounce done, now the actual data
@@ -178,7 +179,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
                     cInfo.cbNonce = nounce.Length;
                     cInfo.pbNonce = (IntPtr)nPtr;
                     cInfo.dwInfoVersion = 1;
-                    cInfo.cbSize = Marshal.SizeOf(typeof(InteropStructs.BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO));
+                    cInfo.cbSize = Marshal.SizeOf<InteropStructs.BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO>();
                     cInfo.pbTag = (IntPtr)authTag;
                     cInfo.cbTag = 16;
                     cInfo.cbAuthData = 13;
@@ -189,7 +190,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
                     Interop.CheckReturnOrThrow(
                     Interop.BCryptDecrypt(_keyHandle, encryptedData, dataLength, &cInfo, null, 0, outputBuffer
                     , dataLength, out resultSize, 0));
-                    buffer = originalBuffer.Slice(0, originalBuffer.Length - 16 - 8);
+                    buffer = originalBuffer.Slice(0,5 + resultSize);
                     return;
                 }
             }
@@ -208,7 +209,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
             var iv = stackalloc byte[ivLength];
             var cInfo = new InteropStructs.BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO();
             cInfo.dwInfoVersion = 1;
-            cInfo.cbSize = Marshal.SizeOf(typeof(InteropStructs.BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO));
+            cInfo.cbSize = Marshal.SizeOf<InteropStructs.BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO>();
 
             var tag = new byte[16];
             var cipherText = new byte[plainText.Length];
@@ -236,12 +237,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
             return cipherText;
 
         }
-        
-        
-
+ 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            //ToDo Tear down key and return buffer to native pool.
         }
     }
 }

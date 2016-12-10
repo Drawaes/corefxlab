@@ -11,7 +11,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
     {
         public unsafe static void ProcessClientKeyExchange(ReadableBuffer readBuffer, ManagedConnectionContext context)
         {
-            context.HandshakeHash.HashData(readBuffer);
+            context.ClientFinishedHash.HashData(readBuffer);
+            context.ServerFinishedHash.HashData(readBuffer);
+
             readBuffer = readBuffer.Slice(1); // Slice off type
             uint contentSize = readBuffer.ReadBigEndian<ushort>();
             readBuffer = readBuffer.Slice(2);
@@ -23,55 +25,54 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
                 throw new IndexOutOfRangeException($"The message buffer contains the wrong amount of data for our operation");
             }
 
-            if (context.CipherSuite.ExchangeCipher == KeyExchangeCipher.RSA)
-            {
-                var length = readBuffer.ReadBigEndian<ushort>();
-                readBuffer = readBuffer.Slice(2);
-                if (readBuffer.Length != length)
-                {
-                    throw new ArgumentOutOfRangeException("Buffer size does not match the content header");
-                }
-                Memory<byte> encryptedData;
-                if (readBuffer.IsSingleSpan)
-                {
-                    encryptedData = readBuffer.First;
-                }
-                else
-                {
-                    throw new NotImplementedException("Exercise for the reader");
-                }
-                var decrypted = Internal.ManagedTls.InteropCertificates.DecryptInPlace(context.SecurityContext.PrivateKeyHandle, encryptedData);
-                var version = decrypted.Span.Read<ushort>();
-                if (version != 0x0303)
-                {
-                    throw new InvalidOperationException("Bad version after decrypting the premaster secret");
-                }
-                var cipherSuite = context.CipherSuite;
-                //This is the amount of key data we need to generate
-                var keyLength = cipherSuite.BulkCipher.NounceSaltLength + cipherSuite.BulkCipher.KeySizeInBytes;
-                keyLength *= 2;
-
-                byte[] preMasterSecret = decrypted.ToArray();
-                byte[] masterSecret = new byte[48];
-
-                P_hash(cipherSuite.Hmac, masterSecret, preMasterSecret, context.SeedBuffer.ToArray());
-                byte[] keyMaterial = new byte[keyLength];
-                context.SetSeedKeyExpansion();
-                context.SetMasterSecret(masterSecret);
-                P_hash(cipherSuite.Hmac, keyMaterial, masterSecret, context.SeedBuffer.ToArray());
-
-                var clientWrite = keyMaterial.Take(cipherSuite.BulkCipher.KeySizeInBytes).ToArray();
-                var serverWrite = keyMaterial.Skip(cipherSuite.BulkCipher.KeySizeInBytes).Take(cipherSuite.BulkCipher.KeySizeInBytes).ToArray();
-
-                var clientNounce = keyMaterial.Skip((cipherSuite.BulkCipher.KeySizeInBytes) * 2).Take(cipherSuite.BulkCipher.NounceSaltLength).ToArray();
-                var serverNounce = keyMaterial.Skip(cipherSuite.BulkCipher.KeySizeInBytes * 2 + cipherSuite.BulkCipher.NounceSaltLength).ToArray();
+            //if (context.CipherSuite.ExchangeCipher == KeyExchangeType.RSA)
+            //{
+            //    var length = readBuffer.ReadBigEndian<ushort>();
+            //    readBuffer = readBuffer.Slice(2);
+            //    if (readBuffer.Length != length)
+            //    {
+            //        throw new ArgumentOutOfRangeException("Buffer size does not match the content header");
+            //    }
+            //    Memory<byte> encryptedData;
+            //    if (readBuffer.IsSingleSpan)
+            //    {
+            //        encryptedData = readBuffer.First;
+            //    }
+            //    else
+            //    {
+            //        throw new NotImplementedException("Exercise for the reader");
+            //    }
+            //    var decrypted = Internal.ManagedTls.InteropCertificates.DecryptInPlace(context.SecurityContext.PrivateKeyHandle, encryptedData);
+            //    var version = decrypted.Span.Read<ushort>();
+            //    if (version != 0x0303)
+            //    {
+            //        throw new InvalidOperationException("Bad version after decrypting the premaster secret");
+            //    }
+            //    var cipherSuite = context.CipherSuite;
+            //    //This is the amount of key data we need to generate
+            //    var keyLength = cipherSuite.KeyMaterialRequired;
                 
-                var clientWriteKey = cipherSuite.BulkCipher.GetCipherKey(clientWrite);
-                var serverWriteKey = cipherSuite.BulkCipher.GetCipherKey(serverWrite);
-                context.SetClientKeyAndNounce(clientWriteKey, clientNounce);
-                context.SetServerKeyAndNounce(serverWriteKey, serverNounce);
-                return;
-            }
+            //    byte[] preMasterSecret = decrypted.ToArray();
+            //    byte[] masterSecret = new byte[48];
+
+            //    P_hash(cipherSuite.Hmac, masterSecret, preMasterSecret, context.SeedBuffer.ToArray());
+            //    byte[] keyMaterial = new byte[keyLength];
+            //    context.SetSeedKeyExpansion();
+            //    context.SetMasterSecret(masterSecret);
+            //    P_hash(cipherSuite.Hmac, keyMaterial, masterSecret, context.SeedBuffer.ToArray());
+
+            //    var clientWrite = keyMaterial.Take(cipherSuite.BulkCipher.KeySizeInBytes).ToArray();
+            //    var serverWrite = keyMaterial.Skip(cipherSuite.BulkCipher.KeySizeInBytes).Take(cipherSuite.BulkCipher.KeySizeInBytes).ToArray();
+
+            //    var clientNounce = keyMaterial.Skip((cipherSuite.BulkCipher.KeySizeInBytes) * 2).Take(cipherSuite.BulkCipher.NounceSaltLength).ToArray();
+            //    var serverNounce = keyMaterial.Skip(cipherSuite.BulkCipher.KeySizeInBytes * 2 + cipherSuite.BulkCipher.NounceSaltLength).ToArray();
+                
+            //    var clientWriteKey = cipherSuite.BulkCipher.GetCipherKey(clientWrite);
+            //    var serverWriteKey = cipherSuite.BulkCipher.GetCipherKey(serverWrite);
+            //    context.SetClientKeyAndNounce(clientWriteKey, clientNounce);
+            //    context.SetServerKeyAndNounce(serverWriteKey, serverNounce);
+            //    return;
+            //}
             throw new InvalidOperationException();
         }
 
@@ -84,13 +85,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
                 Span<byte> seedSpan = new Span<byte>(seed);
                 seedSpan.CopyTo(a1Span.Slice(hash.BlockLength));
                 var seedPtr = a1 + hash.BlockLength;
-                hash.HMac(a1, hash.BlockLength, secretPtr, secret.Length, seedPtr, seed.Length);
+                hash.HashValue(a1, hash.BlockLength, secretPtr, secret.Length, seedPtr, seed.Length);
                 var currentKeyData = stackalloc byte[hash.BlockLength];
 
                 int keyMaterialIndex = 0;
                 while (true)
                 {
-                    hash.HMac(currentKeyData, hash.BlockLength, secretPtr, secret.Length, a1, hash.BlockLength + seed.Length);
+                    hash.HashValue(currentKeyData, hash.BlockLength, secretPtr, secret.Length, a1, hash.BlockLength + seed.Length);
                     for (int i = 0; i < hash.BlockLength; i++)
                     {
                         keyMaterial[keyMaterialIndex] = currentKeyData[i];
@@ -100,7 +101,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
                             return;
                         }
                     }
-                    hash.HMac(a1, hash.BlockLength, secretPtr, secret.Length, a1, hash.BlockLength);
+                    hash.HashValue(a1, hash.BlockLength, secretPtr, secret.Length, a1, hash.BlockLength);
                 }
             }
         }

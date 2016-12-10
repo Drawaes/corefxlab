@@ -16,8 +16,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
         private bool _isHmac;
         private NativeBufferPool _pool;
         private int _blockLength;
+        private HashType _hashType;
 
-        public HashProvider(string provider, bool isHmac)
+        public HashProvider(string provider, bool isHmac, HashType hashType)
         {
             _isHmac = isHmac;
             var hashs = Interop.HashAlgorithms;
@@ -44,13 +45,14 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
         public bool IsValid => _isValid;
         public int BufferSizeNeededForState => _bufferSizeNeededForState;
         public int BlockLength => _blockLength;
+        public HashType HashType => _hashType;
 
         public HashInstance GetLongRunningHash()
         {
             return new HashInstance(_providerHandle, _pool.Rent(_bufferSizeNeededForState));
         }
 
-        public unsafe void HMac(byte* output, int outputLength, byte* secret, int secretLength, byte* message, int messageLength)
+        public unsafe void HashValue(byte* output, int outputLength, byte* secret, int secretLength, byte* message, int messageLength)
         {
             Interop.CheckReturnOrThrow(Interop.BCryptHash(_providerHandle,secret, secretLength, message, messageLength,output,outputLength ));
         }

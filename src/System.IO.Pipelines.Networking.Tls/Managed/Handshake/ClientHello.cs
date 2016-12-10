@@ -45,7 +45,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
                 throw new NotSupportedException("No supported cipher suites");
             }
             context.SetCipherSuite(selectedCipher);
-            context.HandshakeHash.HashData(originalBuffer);
+            context.ClientFinishedHash.HashData(originalBuffer);
+            context.ServerFinishedHash.HashData(originalBuffer);
             buffer = buffer.Slice(sizeOfCipherSuites);
 
             var numberOfCompressionMethods = buffer.ReadBigEndian<byte>();
@@ -84,6 +85,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
                         ExtensionAlpn(context, extensionBuffer);
                         break;
                     case ExtensionType.Supported_groups:
+                        context.KeyExchangeInstance.ProcessSupportedGroupsExtension(extensionBuffer);
+                        break;
                     case ExtensionType.SessionTicket:
                     case ExtensionType.Extended_master_secret:
                     case ExtensionType.Renegotiation_info:
@@ -98,7 +101,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
                 }
             }
         }
-
+        
         private static void ExtensionAlpn(ManagedConnectionContext context, ReadableBuffer extensionBuffer)
         {
             Span<byte> protosToCheck;

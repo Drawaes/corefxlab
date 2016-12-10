@@ -30,7 +30,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
             BufferExtensions.Write24BitNumber(messageContent, messageContentSize);
             if (!context.ServerDataEncrypted)
             {
-                context.HandshakeHash.HashData(buffer.AsReadableBuffer().Slice(5));
+                var readableBuffer = buffer.AsReadableBuffer().Slice(5);
+                context.ClientFinishedHash.HashData(readableBuffer);
+                context.ServerFinishedHash.HashData(readableBuffer);
             }
         }
 

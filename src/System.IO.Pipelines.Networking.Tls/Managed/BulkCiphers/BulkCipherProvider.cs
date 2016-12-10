@@ -18,6 +18,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
         private int _nounceSaltLength;
         private int _keySizeInBytes;
         private readonly string _providerName;
+        private readonly bool _requiresHmac = true;
         
         public BulkCipherProvider(string provider)
         {
@@ -52,6 +53,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
                     InteropProperties.SetBlockChainingMode(_providerHandle, chainingMode);
                     _keySizeInBytes = int.Parse(splitProv[1]) / 8;
                     var blockMode = InteropProperties.GetBlockChainingMode(_providerHandle);
+                    if(chainingMode == BulkCipherChainingMode.CBC || chainingMode == BulkCipherChainingMode.GCM)
+                    {
+                        _requiresHmac = false;
+                    }
                }
                 else
                 {
@@ -70,6 +75,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
         public int NounceSaltLength => _nounceSaltLength;
         public int KeySizeInBytes => _keySizeInBytes;
         public int BufferSizeNeededForState => _bufferSizeNeededForState;
+        public bool RequiresHmac => _requiresHmac;
 
         public BulkCipherKey GetCipherKey(byte[] key)
         {

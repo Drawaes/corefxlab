@@ -17,6 +17,7 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         NTE_BAD_FLAGS = 0x80090009, //Invalid flags specified.
         NTE_PERM = 0x80090010, //Access denied.
         AuthenticationTagMismatch = 0xC000A002,
+        STATUS_NOT_SUPPORTED = 0xc00000bb,
 
     }
 }

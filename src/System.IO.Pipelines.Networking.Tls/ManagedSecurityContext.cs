@@ -14,7 +14,7 @@ namespace System.IO.Pipelines.Networking.Tls
         private readonly PipelineFactory _factory;
         private readonly X509Certificate2 _certificate;
         private IntPtr _privateKeyHandle;
-        private KeyExchangeCipher _keyExchangeAlgo;
+        private KeyExchangeType _keyExchangeAlgo;
         private CipherList _cipherList;
 
         public ManagedSecurityContext(PipelineFactory factory, bool isServer, X509Certificate2 certificate)
@@ -36,10 +36,9 @@ namespace System.IO.Pipelines.Networking.Tls
             if (certificate != null)
             {
                 _privateKeyHandle = Internal.ManagedTls.InteropCertificates.GetPrivateKeyHandle(certificate);
-                _keyExchangeAlgo = (KeyExchangeCipher)Enum.Parse(typeof(KeyExchangeCipher), Internal.ManagedTls.InteropCertificates.GetPrivateKeyAlgo(_privateKeyHandle),true);
             }
-            _cipherList = new CipherList();
-            _cipherList.SetSupported(_keyExchangeAlgo);
+            _cipherList = new CipherList(_privateKeyHandle);
+            
         }
 
         public ApplicationLayerProtocolIds AlpnSupportedProtocols { get; set; }

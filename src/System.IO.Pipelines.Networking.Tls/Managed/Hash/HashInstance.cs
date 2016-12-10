@@ -11,7 +11,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
     {
         private OwnedMemory<byte> _buffer;
         private IntPtr _hashHandle;
-        
+
         public HashInstance(IntPtr providerHandle, OwnedMemory<byte> buffer)
         {
             try
@@ -82,6 +82,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
             fixed (void* ptr = returnValue)
             {
                 Interop.CheckReturnOrThrow(Interop.BCryptFinishHash(_hashHandle, ptr, length, 0));
+                _hashHandle = IntPtr.Zero;
             }
             Dispose();
             return returnValue;

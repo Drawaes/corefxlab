@@ -21,7 +21,7 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         public static readonly BCRYPT_ALGORITHM_IDENTIFIER[] SignatureAlgorithms;
 
         internal const uint BCRYPT_ALG_HANDLE_HMAC_FLAG = 8;
-        
+
 
         [Flags]
         public enum EnumAlgorithmsOptions
@@ -57,7 +57,7 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
             [MarshalAs(UnmanagedType.LPWStr)] string pszAlgId, [MarshalAs(UnmanagedType.LPWStr)] string pszImplementation, uint dwFlags);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         internal extern static ReturnCodes BCryptCloseAlgorithmProvider(IntPtr hAlgorithm, uint dwFlags);
-        
+
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         internal extern static ReturnCodes BCryptCreateHash(IntPtr hAlgorithm, out IntPtr phHash, void* stateBuffer, int hashBufferLength, void* secretBuffer, int secretLength, uint dwFlags);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
@@ -65,8 +65,8 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         internal extern static ReturnCodes BCryptDestroyHash(IntPtr hashHandle);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
-        internal extern static ReturnCodes BCryptFinishHash(IntPtr hHash,void* pbOutput,int cbOutput,uint dwFlags);
-        
+        internal extern static ReturnCodes BCryptFinishHash(IntPtr hHash, void* pbOutput, int cbOutput, uint dwFlags);
+
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         internal extern static ReturnCodes BCryptHash(IntPtr hAlgorithm, void* pbSecret, int cbSecret, void* pbInput, int cbInput, void* pbOutput, int cbOutput);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true)]
@@ -79,9 +79,12 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
                                                            int cbOutput, [Out] out int pcbResult, int dwFlags);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         internal static extern ReturnCodes BCryptDecrypt(IntPtr hKey, void* pbInput, int cbInput, void* pPaddingInfo, void* pbIV, int cbIV, void* pbOutput, int cbOutput, out int pcbResult, int dwFlags);
-        [DllImport(Dll,ExactSpelling =true,SetLastError =true, CharSet =CharSet.Unicode)]
-        internal static extern ReturnCodes BCryptEncrypt(IntPtr hKey, void* pbInput,int cbInput,void* pPaddingInfo, void* pbIV, uint cbIV, void* pbOutput, int cbOutput, out int pcbResult,uint  dwFlags);
-        
+        [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
+        internal static extern ReturnCodes BCryptEncrypt(IntPtr hKey, void* pbInput, int cbInput, void* pPaddingInfo, void* pbIV, uint cbIV, void* pbOutput, int cbOutput, out int pcbResult, uint dwFlags);
+        [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
+        internal static extern ReturnCodes BCryptGenerateKeyPair(IntPtr hAlgorithm, out IntPtr phKey, int dwLength, int dwFlags);
+        [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
+        internal static extern ReturnCodes BCryptFinalizeKeyPair(IntPtr hKey, uint dwFlags);
 
         static Interop()
         {
@@ -97,7 +100,7 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         //{
         //    CheckReturnOrThrow(BCryptSetProperty(provider, BCRYPT_KEY_LENGTH, keySizeInBits, 4, 0));
         //}
-        
+
         private static BCRYPT_ALGORITHM_IDENTIFIER[] GetAlgos(EnumAlgorithmsOptions algoType)
         {
             int sizeOfStruct = Unsafe.SizeOf<BCRYPT_ALGORITHM_IDENTIFIER>();

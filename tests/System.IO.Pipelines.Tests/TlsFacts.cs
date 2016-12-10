@@ -23,6 +23,8 @@ namespace System.IO.Pipelines.Tests
         private static readonly string _certificatePath = Path.Combine(PlatformServices.Default.Application.ApplicationBasePath, "data", "TestCert.pfx");
         private static readonly string _certificatePassword = "Test123t";
         private static readonly string _shortTestString = "The quick brown fox jumped over the lazy dog.";
+        private static readonly string _otherCertificatePath = Path.Combine(PlatformServices.Default.Application.ApplicationBasePath, "data", "certificate.pfx");
+        private static readonly X509Certificate2 _EcdheCert = new X509Certificate2(_otherCertificatePath, "Test");
 
         [Fact]
         public async Task TestManagedProvider()
@@ -31,7 +33,7 @@ namespace System.IO.Pipelines.Tests
             using (var factory = new PipelineFactory())
             using (var socketClient = new Networking.Sockets.SocketListener(factory))
             using (var context = new ManagedSecurityContext(factory, true, cert, ApplicationLayerProtocolIds.Http2OverTls | ApplicationLayerProtocolIds.Http11))
-            using (var clientContext = new SecurityContext(factory, "test", false, cert, ApplicationLayerProtocolIds.Http2OverTls))
+            using (var clientContext = new SecurityContext(factory, "test", false, null, ApplicationLayerProtocolIds.Http2OverTls))
             {
                 var loopback = new LoopbackPipeline(factory);
 

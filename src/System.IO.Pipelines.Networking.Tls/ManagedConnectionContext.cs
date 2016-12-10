@@ -4,6 +4,7 @@ using System.IO.Pipelines.Networking.Tls.Managed;
 using System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers;
 using System.IO.Pipelines.Networking.Tls.Managed.Handshake;
 using System.IO.Pipelines.Networking.Tls.Managed.Hash;
+using System.IO.Pipelines.Networking.Tls.Managed.KeyExchange;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,12 +22,14 @@ namespace System.IO.Pipelines.Networking.Tls
         private ulong _clientSequenceNumber = 0;
         private ulong _serverSequenceNumber = 0;
         private CipherSuite _cipherSuite;
-        private HashInstance _handshakeHash;
+        private HashInstance _clientFinishedHash;
+        private HashInstance _serverFinishedHash;
         private byte[] _clientNounce;
         private byte[] _serverNounce;
         private BulkCipherKey _clientKey;
         private BulkCipherKey _serverKey;
         private byte[] _masterSecret;
+        private IKeyExchangeInstance _keyExchangeInstance;
         private static readonly TlsRecordWriter<HandshakeMessageWriter<HandshakeServerHelloWriter>> _handshakeServerHelloWriter = new TlsRecordWriter<HandshakeMessageWriter<HandshakeServerHelloWriter>>();
         private static readonly TlsRecordWriter<HandshakeMessageWriter<HandshakeServerCertificateWriter>> _handshakeCertificateWriter = new TlsRecordWriter<HandshakeMessageWriter<HandshakeServerCertificateWriter>>();
         private static readonly TlsRecordWriter<HandshakeMessageWriter<HandshakeServerHelloDone>> _handshakeServerDoneWriter = new TlsRecordWriter<HandshakeMessageWriter<HandshakeServerHelloDone>>();
@@ -51,12 +54,15 @@ namespace System.IO.Pipelines.Networking.Tls
         public int TrailerSize { get; set; }
         public CipherSuite CipherSuite => _cipherSuite;
         public ManagedSecurityContext SecurityContext => _context;
-        public HashInstance HandshakeHash => _handshakeHash;
+        public HashInstance ClientFinishedHash => _clientFinishedHash;
+        public HashInstance ServerFinishedHash => _serverFinishedHash;
         public byte[] SeedBuffer => _seedBuffer;
         public bool ServerDataEncrypted => _serverDataEncrypted;
         public BulkCipherKey ServerKey => _serverKey;
         public int MaxBlockSize => 1024 * 16 - 1;
         internal byte[] MasterSecret => _masterSecret;
+        public IKeyExchangeInstance KeyExchangeInstance => _keyExchangeInstance;
+        internal Span<byte> ClientRandom => new Span<byte>(_seedBuffer, s_masterSecretLabel.Length);
 
         public Task DecryptAsync(ReadableBuffer encryptedData, IPipelineWriter decryptedPipeline)
         {
@@ -142,7 +148,9 @@ namespace System.IO.Pipelines.Networking.Tls
         
         public void SetCipherSuite(CipherSuite info)
         {
-            _handshakeHash = info.Hash.GetLongRunningHash();
+            _serverFinishedHash = info.Hash.GetLongRunningHash();
+            _clientFinishedHash = info.Hash.GetLongRunningHash();
+            _keyExchangeInstance = info.KeyExchange.GetInstance(this);
             _cipherSuite = info;
         }
 
@@ -180,6 +188,9 @@ namespace System.IO.Pipelines.Networking.Tls
                     _handshakeCertificateWriter.WriteMessage(ref writeBuffer, this);
                     writeBuffer.Commit();
                     writeBuffer = writer.Alloc();
+                    _keyExchangeInstance.WriteServerKeyExchange(ref writeBuffer);
+                    writeBuffer.Commit();
+                    writeBuffer = writer.Alloc();
                     _handshakeServerDoneWriter.WriteMessage(ref writeBuffer, this);
                     return writeBuffer.FlushAsync();
                 case HandshakeMessageType.ClientKeyExchange:
@@ -200,7 +211,8 @@ namespace System.IO.Pipelines.Networking.Tls
 
         public void Dispose()
         {
-            _handshakeHash.Dispose();
+            _serverFinishedHash.Dispose();
+            _clientFinishedHash.Dispose();
         }
     }
 }
