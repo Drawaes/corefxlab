@@ -23,7 +23,7 @@
   },
 
   "frameworks": {
-    "net451": {},
+    //"net451": {},
     "netstandard1.6": {
       "dependencies": { "System.Security.Cryptography.X509Certificates": "4.1.0" }
     }

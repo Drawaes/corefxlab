@@ -18,6 +18,8 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         NTE_PERM = 0x80090010, //Access denied.
         AuthenticationTagMismatch = 0xC000A002,
         STATUS_NOT_SUPPORTED = 0xc00000bb,
+        NTE_INVALID_PARAMETER = 0x80090027,
+        NTE_INVALID_HANDLE = 0x80090026,
 
     }
 }

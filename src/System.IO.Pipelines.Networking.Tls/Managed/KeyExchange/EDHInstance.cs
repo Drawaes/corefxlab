@@ -42,5 +42,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
         {
             throw new NotImplementedException();
         }
+
+        public void ProcessClientKeyExchange(ReadableBuffer buffer)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

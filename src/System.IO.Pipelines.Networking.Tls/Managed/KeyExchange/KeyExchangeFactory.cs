@@ -8,10 +8,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
 {
     public class KeyExchangeFactory
     {
-        private static readonly int s_maxEnumValue = Enum.GetValues(typeof(KeyExchangeType)).Cast<int>().Max();
+        private static readonly int s_maxEnumValue = Enum.GetValues(typeof(KeyExchangeType)).Cast<byte>().Max();
         private readonly IKeyExchangeProvider[] _providers = new IKeyExchangeProvider[s_maxEnumValue + 1];
-        private static NativeBufferPool _nativeBuffer;
-
+        
         public KeyExchangeFactory(IntPtr privateKey)
         {
             var keyAlgo = Internal.ManagedTls.InteropCertificates.GetPrivateKeyAlgo(privateKey);
@@ -28,19 +27,6 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
                 default:
                     throw new InvalidOperationException($"Unsupported key type {privateKeyType}");
             }
-            int maxBufferSize = 0;
-            foreach(var prov in _providers)
-            {
-                if(prov != null && prov.Buffer > maxBufferSize)
-                {
-                    maxBufferSize = prov.Buffer;
-                }
-            }
-            _nativeBuffer = new NativeBufferPool(maxBufferSize);
-            foreach(var prov in _providers)
-            {
-                prov?.SetBufferPool(_nativeBuffer);
-            }
         }
 
         private void SetupRsaExchanges(IntPtr keyHandle)
@@ -53,9 +39,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
                 {
                     if (v.StartsWith("ECDHE", StringComparison.OrdinalIgnoreCase))
                     {
-                        ////Eliptic curve diffe hellman
-                        //var keyExchange = new EdhKeyExchange(t, keyHandle,true);
-                        //_providers[(int)t] = keyExchange;
+                        //Eliptic curve diffe hellman
+                        var keyExchange = new EdhKeyExchange(t, keyHandle, true);
+                        _providers[(int)t] = keyExchange;
                     }
                     else if (v.StartsWith("DHE", StringComparison.OrdinalIgnoreCase))
                     {
@@ -64,7 +50,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
                     }
                     else if (v.Length == 3)
                     {
-                        var keyExchange = new StandardKeyExchange(t);
+                        var keyExchange = new HeritageKeyExchange(t);
                         _providers[(int)t] = keyExchange;
                     }
 

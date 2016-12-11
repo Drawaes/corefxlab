@@ -10,5 +10,6 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
         void ProcessSupportedGroupsExtension(ReadableBuffer buffer);
         void ProcessEcPointFormats(ReadableBuffer buffer);
         void WriteServerKeyExchange(ref WritableBuffer buffer);
+        void ProcessClientKeyExchange(ReadableBuffer buffer);
     }
 }

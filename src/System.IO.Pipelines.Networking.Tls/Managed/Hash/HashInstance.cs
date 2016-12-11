@@ -34,16 +34,21 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
             }
         }
 
+        public void HashData(Memory<byte> memory)
+        {
+            void* pointer;
+            if (!memory.TryGetPointer(out pointer))
+            {
+                throw new InvalidOperationException("Problem getting the pointer for a native memory block");
+            }
+            Interop.CheckReturnOrThrow(Interop.BCryptHashData(_hashHandle, pointer, memory.Length, 0));
+        }
+
         public void HashData(ReadableBuffer buffer)
         {
             foreach (var memory in buffer)
             {
-                void* pointer;
-                if (!memory.TryGetPointer(out pointer))
-                {
-                    throw new InvalidOperationException("Problem getting the pointer for a native memory block");
-                }
-                Interop.CheckReturnOrThrow(Interop.BCryptHashData(_hashHandle, pointer, memory.Length, 0));
+                HashData(memory);
             }
         }
         public void HashData(byte[] buffer)

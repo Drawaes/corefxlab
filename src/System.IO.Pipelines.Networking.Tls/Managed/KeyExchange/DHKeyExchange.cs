@@ -12,8 +12,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
         private readonly bool _isEphemeral;
         private IntPtr _key;
         private IntPtr _provider;
-        private NativeBufferPool _pool;
-
+        
         public DHKeyExchange(KeyExchangeType exchangeType, IntPtr privateKey, bool isEphemeral)
         {
             var algo = "DH";
@@ -21,6 +20,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
             Internal.ManagedTls.Interop.BCryptOpenAlgorithmProvider(out handle, algo, null, 0);
             _provider = handle;
             _keyExchangeType = exchangeType;
+            _key = privateKey;
             _isEphemeral = isEphemeral;
         }
 
@@ -30,22 +30,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
         {
             if (_isEphemeral)
             {
-                return new DHEInstance(_key, context, _provider,_pool);
+                return new DHEInstance(_key, context, _provider);
             }
             throw new NotImplementedException();
-        }
-
-        public void SetBufferPool(NativeBufferPool pool)
-        {
-            _pool = pool;
-        }
-
-        public int Buffer
-        {
-            get
-            {
-                return 500;//Internal.ManagedTls.InteropProperties.GetObjectLength(_provider);
-            }
         }
     }
 }

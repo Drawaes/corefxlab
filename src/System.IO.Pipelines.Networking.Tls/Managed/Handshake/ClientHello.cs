@@ -91,17 +91,40 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
                     case ExtensionType.Extended_master_secret:
                     case ExtensionType.Renegotiation_info:
                     case ExtensionType.Ec_point_formats:
+                        context.KeyExchangeInstance.ProcessEcPointFormats(extensionBuffer);
+                        break;
                     case ExtensionType.Heartbeat:
                     case ExtensionType.Status_request:
                     case ExtensionType.Signed_certificate_timestamp:
                     case ExtensionType.Server_name:
                     case ExtensionType.Signature_algorithms:
+                        ExtensionSignature(extensionBuffer);
+                        break;
                     default:
                         break;
                 }
             }
         }
-        
+
+        private static void ExtensionSignature(ReadableBuffer extensionBuffer)
+        {
+            var length = extensionBuffer.ReadBigEndian<ushort>();
+            extensionBuffer = extensionBuffer.Slice(2);
+            while(extensionBuffer.Length > 1)
+            {
+                var hashMethod =(Hash.HashType) extensionBuffer.ReadBigEndian<byte>();
+                var key = (KeyExchange.KeyExchangeType) extensionBuffer.ReadBigEndian<byte>();
+                if(key == KeyExchange.KeyExchangeType.RSA)
+                {
+                    if(hashMethod == Hash.HashType.SHA384 || hashMethod == Hash.HashType.SHA256 || hashMethod == Hash.HashType.SHA)
+                    {
+                        Console.WriteLine(hashMethod);
+                    }
+                }
+                extensionBuffer = extensionBuffer.Slice(2);
+            }
+        }
+
         private static void ExtensionAlpn(ManagedConnectionContext context, ReadableBuffer extensionBuffer)
         {
             Span<byte> protosToCheck;

@@ -29,6 +29,8 @@ namespace System.IO.Pipelines.Networking.Tls
         private BulkCipherKey _clientKey;
         private BulkCipherKey _serverKey;
         private byte[] _masterSecret;
+        private byte[] _clientRandom;
+        private byte[] _serverRandom;
         private IKeyExchangeInstance _keyExchangeInstance;
         private static readonly TlsRecordWriter<HandshakeMessageWriter<HandshakeServerHelloWriter>> _handshakeServerHelloWriter = new TlsRecordWriter<HandshakeMessageWriter<HandshakeServerHelloWriter>>();
         private static readonly TlsRecordWriter<HandshakeMessageWriter<HandshakeServerCertificateWriter>> _handshakeCertificateWriter = new TlsRecordWriter<HandshakeMessageWriter<HandshakeServerCertificateWriter>>();
@@ -62,7 +64,7 @@ namespace System.IO.Pipelines.Networking.Tls
         public int MaxBlockSize => 1024 * 16 - 1;
         internal byte[] MasterSecret => _masterSecret;
         public IKeyExchangeInstance KeyExchangeInstance => _keyExchangeInstance;
-        internal Span<byte> ClientRandom => new Span<byte>(_seedBuffer, s_masterSecretLabel.Length);
+        internal Span<byte> RandomData => new Span<byte>(_seedBuffer, s_masterSecretLabel.Length);
 
         public Task DecryptAsync(ReadableBuffer encryptedData, IPipelineWriter decryptedPipeline)
         {
@@ -128,6 +130,8 @@ namespace System.IO.Pipelines.Networking.Tls
 
         public void SetClientRandom(ReadableBuffer buffer)
         {
+            _clientRandom = new byte[32];
+            buffer.Slice(0,32).CopyTo(new Span<byte>(_clientRandom));
             var span = new Span<byte>(_seedBuffer, s_masterSecretLabel.Length);
             buffer.CopyTo(span);
         }
@@ -194,7 +198,7 @@ namespace System.IO.Pipelines.Networking.Tls
                     _handshakeServerDoneWriter.WriteMessage(ref writeBuffer, this);
                     return writeBuffer.FlushAsync();
                 case HandshakeMessageType.ClientKeyExchange:
-                    ClientKeyExchange.ProcessClientKeyExchange(readBuffer, this);
+                    _keyExchangeInstance.ProcessClientKeyExchange(readBuffer);
                     return _cachedTask;
                 case HandshakeMessageType.Finished:
                     ClientFinished.ProcessClientFinished(readBuffer, this);

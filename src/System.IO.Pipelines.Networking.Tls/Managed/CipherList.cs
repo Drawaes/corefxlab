@@ -11,7 +11,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
     public class CipherList
     {
         private readonly CipherSuite[] _00ciphers = new CipherSuite[255];
-        private readonly CipherSuite[] _0Cciphers = new CipherSuite[255];
+        private readonly CipherSuite[] _C0ciphers = new CipherSuite[255];
         private readonly BulkCipherFactory _bulkCipherFactory = new BulkCipherFactory();
         private readonly HashFactory _hmacFactory = new HashFactory();
         private readonly KeyExchangeFactory _keyExchangeFactory;
@@ -79,45 +79,45 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
             _00ciphers[0xB3] = new CipherSuite(0x00B3, "TLS_DHE_PSK_WITH_AES_256_CBC_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
             _00ciphers[0xB6] = new CipherSuite(0x00B6, "TLS_RSA_PSK_WITH_AES_128_CBC_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
             _00ciphers[0xB7] = new CipherSuite(0x00B7, "TLS_RSA_PSK_WITH_AES_256_CBC_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x03] = new CipherSuite(0x0C03, "TLS_ECDH_ECDSA_WITH_3DES_EDE_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x04] = new CipherSuite(0x0C04, "TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x05] = new CipherSuite(0x0C05, "TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x08] = new CipherSuite(0x0C08, "TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x09] = new CipherSuite(0x0C09, "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x0A] = new CipherSuite(0x0C0A, "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x0D] = new CipherSuite(0x0C0D, "TLS_ECDH_RSA_WITH_3DES_EDE_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x0E] = new CipherSuite(0x0C0E, "TLS_ECDH_RSA_WITH_AES_128_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x0F] = new CipherSuite(0x0C0F, "TLS_ECDH_RSA_WITH_AES_256_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x12] = new CipherSuite(0x0C12, "TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x13] = new CipherSuite(0x0C13, "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x14] = new CipherSuite(0x0C14, "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x23] = new CipherSuite(0x0C23, "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x24] = new CipherSuite(0x0C24, "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x25] = new CipherSuite(0x0C25, "TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x26] = new CipherSuite(0x0C26, "TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x27] = new CipherSuite(0x0C27, "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x28] = new CipherSuite(0x0C28, "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x29] = new CipherSuite(0x0C29, "TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x2A] = new CipherSuite(0x0C2A, "TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x2B] = new CipherSuite(0x0C2B, "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x2C] = new CipherSuite(0x0C2C, "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x2D] = new CipherSuite(0x0C2D, "TLS_ECDH_ECDSA_WITH_AES_128_GCM_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x2E] = new CipherSuite(0x0C2E, "TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x2F] = new CipherSuite(0x0C2F, "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x30] = new CipherSuite(0x0C30, "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x31] = new CipherSuite(0x0C31, "TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x32] = new CipherSuite(0x0C32, "TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x34] = new CipherSuite(0x0C34, "TLS_ECDHE_PSK_WITH_3DES_EDE_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x35] = new CipherSuite(0x0C35, "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x36] = new CipherSuite(0x0C36, "TLS_ECDHE_PSK_WITH_AES_256_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x37] = new CipherSuite(0x0C37, "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
-            _0Cciphers[0x38] = new CipherSuite(0x0C38, "TLS_ECDHE_PSK_WITH_AES_256_CBC_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x03] = new CipherSuite(0xC003, "TLS_ECDH_ECDSA_WITH_3DES_EDE_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x04] = new CipherSuite(0xC004, "TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x05] = new CipherSuite(0xC005, "TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x08] = new CipherSuite(0xC008, "TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x09] = new CipherSuite(0xC009, "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x0A] = new CipherSuite(0xC00A, "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x0D] = new CipherSuite(0xC00D, "TLS_ECDH_RSA_WITH_3DES_EDE_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x0E] = new CipherSuite(0xC00E, "TLS_ECDH_RSA_WITH_AES_128_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x0F] = new CipherSuite(0xC00F, "TLS_ECDH_RSA_WITH_AES_256_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x12] = new CipherSuite(0xC012, "TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x13] = new CipherSuite(0xC013, "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x14] = new CipherSuite(0xC014, "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x23] = new CipherSuite(0xC023, "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x24] = new CipherSuite(0xC024, "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x25] = new CipherSuite(0xC025, "TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x26] = new CipherSuite(0xC026, "TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x27] = new CipherSuite(0xC027, "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x28] = new CipherSuite(0xC028, "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x29] = new CipherSuite(0xC029, "TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x2A] = new CipherSuite(0xC02A, "TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x2B] = new CipherSuite(0xC02B, "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x2C] = new CipherSuite(0xC02C, "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x2D] = new CipherSuite(0xC02D, "TLS_ECDH_ECDSA_WITH_AES_128_GCM_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x2E] = new CipherSuite(0xC02E, "TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x2F] = new CipherSuite(0xC02F, "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x30] = new CipherSuite(0xC030, "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x31] = new CipherSuite(0xC031, "TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x32] = new CipherSuite(0xC032, "TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x34] = new CipherSuite(0xC034, "TLS_ECDHE_PSK_WITH_3DES_EDE_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x35] = new CipherSuite(0xC035, "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x36] = new CipherSuite(0xC036, "TLS_ECDHE_PSK_WITH_AES_256_CBC_SHA",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x37] = new CipherSuite(0xC037, "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA256",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
+            _C0ciphers[0x38] = new CipherSuite(0xC038, "TLS_ECDHE_PSK_WITH_AES_256_CBC_SHA384",_bulkCipherFactory, _hmacFactory, _keyExchangeFactory);
 
-            for (int i = 0; i < _0Cciphers.Length; i++)
+            for (int i = 0; i < _C0ciphers.Length; i++)
             {
-                if (_0Cciphers[i]?.IsValid() != true)
+                if (_C0ciphers[i]?.IsValid() != true)
                 {
-                    _0Cciphers[i] = null;
+                    _C0ciphers[i] = null;
                 }
                 if (_00ciphers[i]?.IsValid() != true)
                 {
@@ -130,11 +130,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
 
         public void SetSupported(KeyExchangeType keyExchangeAlgo)
         {
-            //for (int i = 0; i < _0Cciphers.Length; i++)
+            //for (int i = 0; i < _C0ciphers.Length; i++)
             //{
-            //    if (_0Cciphers[i] != null && _0Cciphers[i].ExchangeCipher != keyExchangeAlgo)
+            //    if (_C0ciphers[i] != null && _C0ciphers[i].ExchangeCipher != keyExchangeAlgo)
             //    {
-            //        _0Cciphers[i] = null;
+            //        _C0ciphers[i] = null;
             //    }
             //    if (_00ciphers[i] != null && _00ciphers[i].ExchangeCipher != keyExchangeAlgo)
             //    {
@@ -152,7 +152,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
             }
             if (frontKey == 0xC000)
             {
-                return _0Cciphers[cipherKey & 0x00FF];
+                return _C0ciphers[cipherKey & 0x00FF];
             }
             return null;
         }

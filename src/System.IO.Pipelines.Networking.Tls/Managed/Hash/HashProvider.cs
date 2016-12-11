@@ -18,8 +18,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
         private int _blockLength;
         private HashType _hashType;
 
-        public HashProvider(string provider, bool isHmac, HashType hashType)
+        public HashProvider(HashType hashType, bool isHmac)
         {
+            _hashType = hashType;
+            var provider = hashType.ToString();
             _isHmac = isHmac;
             var hashs = Interop.HashAlgorithms;
             for (int i = 0; i < hashs.Length; i++)

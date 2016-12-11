@@ -15,23 +15,15 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
 
         public EdhKeyExchange(KeyExchangeType exchangeType, IntPtr privateKey, bool isEphemeral)
         {
-            var algos = Internal.ManagedTls.Interop.SecretAlgorithms.First(s => s.pszName == "ECDSA_P256").pszName;
             IntPtr handle;
-            Internal.ManagedTls.Interop.BCryptOpenAlgorithmProvider(out handle, algos, null,0);
+            Internal.ManagedTls.Interop.BCryptOpenAlgorithmProvider(out handle, "ECDH", null,0);
             _provider = handle;
             _keyExchangeType = exchangeType;
             _isEphemeral = isEphemeral;
+            _key = privateKey;
         }
 
         public KeyExchangeType KeyExchangeType => _keyExchangeType;
-
-        public int Buffer
-        {
-            get
-            {
-                return Internal.ManagedTls.InteropProperties.GetObjectLength(_provider);
-            }
-        }
 
         public IKeyExchangeInstance GetInstance(ManagedConnectionContext context)
         {
@@ -43,11 +35,6 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
             {
                 return new EDHInstance(_key, context);
             }
-        }
-
-        public void SetBufferPool(NativeBufferPool nativeBuffer)
-        {
-            
         }
     }
 }

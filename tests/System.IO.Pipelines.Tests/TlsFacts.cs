@@ -27,47 +27,49 @@ namespace System.IO.Pipelines.Tests
         private static readonly X509Certificate2 _EcdheCert = new X509Certificate2(_otherCertificatePath, "Test");
 
         [Fact]
-        public async Task TestManagedProvider()
+        public Task TestManagedProvider()
         {
             using (var cert = new X509Certificate2(_certificatePath, _certificatePassword, X509KeyStorageFlags.Exportable))
             using (var factory = new PipelineFactory())
             using (var socketClient = new Networking.Sockets.SocketListener(factory))
             using (var context = new ManagedSecurityContext(factory, true, cert, ApplicationLayerProtocolIds.Http2OverTls | ApplicationLayerProtocolIds.Http11))
-            using (var clientContext = new SecurityContext(factory, "test", false, null, ApplicationLayerProtocolIds.Http2OverTls))
+            using (var clientContext = new OpenSslSecurityContext(factory, "test", false, null,null, ApplicationLayerProtocolIds.Http2OverTls))
             {
                 var loopback = new LoopbackPipeline(factory);
 
-                //var ipEndPoint = new IPEndPoint(IPAddress.Loopback, 443);
-                //socketClient.OnConnection(s => context.CreateSecurePipeline(s).PerformHandshakeAsync());
-                //socketClient.Start(ipEndPoint);
-                using (var server = context.CreateSecurePipeline(loopback.ServerPipeline))
-                using (var client = clientContext.CreateSecurePipeline(loopback.ClientPipeline))
-                {
-                    Echo(server);
-                    var protocol = await client.PerformHandshakeAsync();
-                    Assert.Equal(ApplicationLayerProtocolIds.Http2OverTls, protocol);
-                    for (int i = 0; i < 10; i++)
-                    {
-                        var outputBuffer = client.Output.Alloc();
-                        outputBuffer.Write(Encoding.UTF8.GetBytes(_shortTestString));
-                        await outputBuffer.FlushAsync();
+                var ipEndPoint = new IPEndPoint(IPAddress.Loopback, 443);
+                socketClient.OnConnection(s => context.CreateSecurePipeline(s).PerformHandshakeAsync());
+                socketClient.Start(ipEndPoint);
+                Console.ReadLine();
+                return Task.FromResult(0);
+                //using (var server = context.CreateSecurePipeline(loopback.ServerPipeline))
+                //using (var client = clientContext.CreateSecurePipeline(loopback.ClientPipeline))
+                //{
+                //    Echo(server);
+                //    var protocol = await client.PerformHandshakeAsync();
+                //    Assert.Equal(ApplicationLayerProtocolIds.Http2OverTls, protocol);
+                //    for (int i = 0; i < 10; i++)
+                //    {
+                //        var outputBuffer = client.Output.Alloc();
+                //        outputBuffer.Write(Encoding.UTF8.GetBytes(_shortTestString));
+                //        await outputBuffer.FlushAsync();
 
-                        //Now check we get the same thing back
-                        string resultString;
-                        while (true)
-                        {
-                            var result = await client.Input.ReadAsync();
-                            if (result.Buffer.Length >= _shortTestString.Length)
-                            {
-                                resultString = result.Buffer.GetUtf8String();
-                                client.Input.Advance(result.Buffer.End);
-                                break;
-                            }
-                            client.Input.Advance(result.Buffer.Start, result.Buffer.End);
-                        }
-                        Assert.Equal(_shortTestString, resultString);
-                    }
-                }
+                //        //Now check we get the same thing back
+                //        string resultString;
+                //        while (true)
+                //        {
+                //            var result = await client.Input.ReadAsync();
+                //            if (result.Buffer.Length >= _shortTestString.Length)
+                //            {
+                //                resultString = result.Buffer.GetUtf8String();
+                //                client.Input.Advance(result.Buffer.End);
+                //                break;
+                //            }
+                //            client.Input.Advance(result.Buffer.Start, result.Buffer.End);
+                //        }
+                //        Assert.Equal(_shortTestString, resultString);
+                //    }
+                //}
             }
         }
 

@@ -13,9 +13,9 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         private const string Dll = "Bcrypt.dll";
 
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
-        private extern static ReturnCodes BCryptGetProperty(IntPtr bCryptHandle, string pszProperty, out int pbOutput, int cbOutput, out int pcbResult, uint dwFlags);
+        internal extern static ReturnCodes BCryptGetProperty(IntPtr bCryptHandle, string pszProperty, out int pbOutput, int cbOutput, out int pcbResult, uint dwFlags);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
-        private extern static ReturnCodes BCryptGetProperty(IntPtr bCryptHandle, string pszProperty, void* pbOutput, int cbOutput, out int pcbResult, uint dwFlags);
+        internal extern static ReturnCodes BCryptGetProperty(IntPtr bCryptHandle, string pszProperty, void* pbOutput, int cbOutput, out int pcbResult, uint dwFlags);
         [DllImport(Dll, SetLastError = true, ExactSpelling = true, CharSet = CharSet.Unicode)]
         internal static extern ReturnCodes BCryptSetProperty(IntPtr hObject, string pszProperty, string pbInput, int cbInput, uint dwFlags);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
@@ -79,7 +79,7 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
             return result;
         }
 
-        private static void SetStringProperty(IntPtr provider, string property, string value)
+        internal static void SetStringProperty(IntPtr provider, string property, string value)
         {
             Interop.CheckReturnOrThrow(
                 BCryptSetProperty(provider, property, value,  value != null ? (value.Length + 1) * sizeof(char) : 0, 0));

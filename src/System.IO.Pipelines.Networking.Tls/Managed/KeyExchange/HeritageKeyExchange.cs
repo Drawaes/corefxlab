@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
 {
-    public class StandardKeyExchange : IKeyExchangeProvider
+    public class HeritageKeyExchange : IKeyExchangeProvider
     {
         private readonly KeyExchangeType _keyExchangeType;
 
-        public StandardKeyExchange(KeyExchangeType exchangeType)
+        public HeritageKeyExchange(KeyExchangeType exchangeType)
         {
             _keyExchangeType = exchangeType;
         }

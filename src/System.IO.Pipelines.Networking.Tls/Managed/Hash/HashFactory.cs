@@ -14,7 +14,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
 
         public HashFactory()
         {
-            var arraySize = ((int[])Enum.GetValues(typeof(HashType))).Max() + 1;
+            var arraySize = ((byte[])Enum.GetValues(typeof(HashType))).Max() + 1;
             _hashProviders = new HashProvider[arraySize];
             _hmacProviders = new HashProvider[arraySize];
         }
@@ -31,7 +31,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
             {
                 return provider;
             }
-            provider = new HashProvider(algo.ToString(),false);
+            provider = new HashProvider(algo,false);
             if(provider.IsValid)
             {
                 _hashProviders[alg] = provider;
@@ -52,7 +52,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Hash
             {
                 return provider;
             }
-            provider = new HashProvider(algo.ToString(), true);
+            provider = new HashProvider(algo, true);
             if (provider.IsValid)
             {
                 _hmacProviders[alg] = provider;

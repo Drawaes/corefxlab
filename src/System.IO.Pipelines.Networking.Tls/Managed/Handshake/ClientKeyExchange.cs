@@ -73,7 +73,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Handshake
             //    context.SetServerKeyAndNounce(serverWriteKey, serverNounce);
             //    return;
             //}
-            throw new InvalidOperationException();
+           throw new InvalidOperationException();
         }
 
         internal unsafe static void P_hash(HashProvider hash, byte[] keyMaterial, byte[] secret, byte[] seed)
