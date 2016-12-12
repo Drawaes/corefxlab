@@ -67,42 +67,35 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
             buffer.WriteBigEndian<byte>(0);
 
             GenerateEphemeralKey();
-
             var hash = WriteServerECDHParams(ref buffer);
 
             buffer.Ensure(2);
             buffer.WriteBigEndian((byte)_context.CipherSuite.Hash.HashType);
             buffer.WriteBigEndian((byte)KeyExchangeType.RSA);
-
-            hash = ASN1HashHeader.Headers[(int)_context.CipherSuite.Hash.HashType].Concat(hash).ToArray();
-
-            var rsaKeySize = InteropCertificates.GetSize(_key) / 8;
-
-            var sig = new byte[rsaKeySize];
-
-            Buffer.BlockCopy(hash, 0, sig, sig.Length - hash.Length, hash.Length);
-            sig[0] = 0x00;
-            sig[1] = 0x01;
-            for (int i = 2; i < sig.Length - hash.Length - 1; i++)
+                        
+            fixed(void* inPtr = hash)
             {
-                sig[i] = 0xFF;
-            }
-            sig[sig.Length - hash.Length - 1] = 0x00;
+                var paddInfo = new BCRYPT_PKCS1_PADDING_INFO();
+                paddInfo.pszAlgId = Marshal.StringToHGlobalUni(_context.CipherSuite.Hash.HashType.ToString() + "\0");
 
-            fixed (void* hashPtr = sig)
-            {
                 int result;
                 Interop.CheckReturnOrThrow(
-                    InteropCertificates.NCryptDecrypt(_key, hashPtr, sig.Length, null, hashPtr, sig.Length, out result, (uint)0));
+                    InteropCertificates.NCryptSignHash(_key, &paddInfo,(IntPtr)inPtr, hash.Length, IntPtr.Zero, 0, out result, InteropCertificates.Padding.NCRYPT_PAD_PKCS1_FLAG ));
+                
+                buffer.Ensure(result + 2);
+                buffer.WriteBigEndian((ushort)result);
+                void* ptr;
+                if(!buffer.Memory.TryGetPointer(out ptr))
+                {
+                    throw new InvalidOperationException();
+                }
+                Interop.CheckReturnOrThrow(
+                    InteropCertificates.NCryptSignHash(_key, &paddInfo, (IntPtr)inPtr, hash.Length, (IntPtr)ptr, result, out result, InteropCertificates.Padding.NCRYPT_PAD_PKCS1_FLAG));
+                buffer.Advance(result);
             }
-            buffer.Ensure(sig.Length + 2);
-            buffer.WriteBigEndian((ushort)sig.Length);
-            buffer.Write(new Span<byte>(sig));
-            //buffer.Advance(sigsize);
 
             var messageContent = buffer.BytesWritten - messageContentCurrentSize;
             BufferExtensions.Write24BitNumber(messageContent, messageContentSize);
-
             var recordSize = buffer.BytesWritten - amountWritten;
             bookmark.Write16BitNumber((ushort)recordSize);
 
