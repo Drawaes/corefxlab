@@ -10,16 +10,9 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
     public unsafe static class InteropPki
     {
         private const string Dll = "Bcrypt.dll";
-        private const string NcryptDll = "Ncrypt.dll";
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         internal static extern ReturnCodes BCryptExportKey(IntPtr hKey, IntPtr encyrptKey, string blobType, IntPtr pbOutput, int cbOutput, out int pcbResult, uint dwFlags);
-        //[DllImport(, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
-        //internal static extern ReturnCodes BCryptSignHash(IntPtr hKey, IntPtr pPaddingInfo, IntPtr pbInput, int cbInput, IntPtr pbOutput, int cbOutput, out int pcbResult, uint dwFlags);
-        [DllImport(NcryptDll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
-        internal static extern ReturnCodes NCryptSignHash(IntPtr hKey,void* pPaddingInfo,IntPtr pbHashValue,int cbHashValue,IntPtr pbSignature,int cbSignature,out int pcbResult,Padding dwFlags);
-        [DllImport(NcryptDll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
-        internal static extern ReturnCodes NCryptImportKey(IntPtr hProvider,IntPtr hImportKey, string pszBlobType,IntPtr pParameterList, out IntPtr phKey, IntPtr pbData, int cbData,uint dwFlags);
-        [DllImport(NcryptDll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
+        [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         internal static extern ReturnCodes BCryptImportKeyPair(IntPtr hAlgorithm, IntPtr hImportKey, string pszBlobType, out IntPtr phKey, IntPtr pbInput, int cbInput, uint dwFlags);
 
         private const string NCRYPT_ALGORITHM_PROPERTY = "Algorithm Name";

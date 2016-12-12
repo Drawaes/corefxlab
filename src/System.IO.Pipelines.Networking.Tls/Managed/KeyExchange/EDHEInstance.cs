@@ -60,7 +60,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
             var bookmark = buffer.Memory.Span;
             buffer.WriteBigEndian<ushort>(0);
             var amountWritten = buffer.BytesWritten;
-            buffer.WriteBigEndian((byte)Handshake.HandshakeMessageType.ServerKeyExchange);
+            buffer.WriteBigEndian((byte)HandshakeMessageType.ServerKeyExchange);
             var messageContentSize = buffer.Memory;
             var messageContentCurrentSize = buffer.BytesWritten + 3;
             buffer.WriteBigEndian<ushort>(0);
@@ -74,20 +74,20 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
             buffer.WriteBigEndian((byte)_context.CipherSuite.Hash.HashType);
             buffer.WriteBigEndian((byte)KeyExchangeType.RSA);
 
-            var sigHash = ASN1HashHeader.Headers[(int)_context.CipherSuite.Hash.HashType].Concat(hash).ToArray();
+            hash = ASN1HashHeader.Headers[(int)_context.CipherSuite.Hash.HashType].Concat(hash).ToArray();
 
             var rsaKeySize = InteropCertificates.GetSize(_key) / 8;
 
             var sig = new byte[rsaKeySize];
 
-            Buffer.BlockCopy(sigHash, 0, sig, sig.Length - sigHash.Length, sigHash.Length);
+            Buffer.BlockCopy(hash, 0, sig, sig.Length - hash.Length, hash.Length);
             sig[0] = 0x00;
             sig[1] = 0x01;
-            for (int i = 2; i < sig.Length - sigHash.Length - 1; i++)
+            for (int i = 2; i < sig.Length - hash.Length - 1; i++)
             {
                 sig[i] = 0xFF;
             }
-            sig[sig.Length - sigHash.Length - 1] = 0x00;
+            sig[sig.Length - hash.Length - 1] = 0x00;
 
             fixed (void* hashPtr = sig)
             {
@@ -160,13 +160,12 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
             _eKeyPair = ptr;
             int keySize;
             Interop.CheckReturnOrThrow(
-                InteropPki.BCryptExportKey(_eKeyPair, IntPtr.Zero, BCRYPT_ECCPUBLIC_BLOB, IntPtr.Zero, 0, out keySize, 0));
+                BCryptExportKey(_eKeyPair, IntPtr.Zero, BCRYPT_ECCPUBLIC_BLOB, IntPtr.Zero, 0, out keySize, 0));
             _eKeySize = keySize - 8;
         }
 
         public unsafe void ProcessClientKeyExchange(ReadableBuffer buffer)
         {
-            
             _context.ClientFinishedHash.HashData(buffer);
             _context.ServerFinishedHash.HashData(buffer);
 
@@ -180,11 +179,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
             {
                 throw new IndexOutOfRangeException($"The message buffer contains the wrong amount of data for our operation");
             }
-
             
-
             var keyLength = buffer.ReadBigEndian<byte>();
-            keyLength --;
+            keyLength--;
             buffer = buffer.Slice(1);
             var compressionType = buffer.ReadBigEndian<byte>();
             buffer = buffer.Slice(1, buffer.End);
@@ -192,19 +189,19 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
             {
                 throw new Alerts.AlertException(Alerts.AlertDescription.Descriptions[50], Alerts.AlertServerity.Fatal);
             }
-            
+
             //Now we have the point and can load the key
             var keyBuffer = stackalloc byte[keyLength + 8];
             var blobHeader = new InteropStructs.BCRYPT_ECCKEY_BLOB();
             //BCRYPT_ECDH_PUBLIC_GENERIC_MAGIC    0x504B4345
             blobHeader.dwMagic = 0x504B4345;
-            blobHeader.cbKey = keyLength/2;
-            Marshal.StructureToPtr(blobHeader,(IntPtr)keyBuffer,false);
-            buffer.CopyTo(new Span<byte>(keyBuffer + 8,keyLength));
-            
+            blobHeader.cbKey = keyLength / 2;
+            Marshal.StructureToPtr(blobHeader, (IntPtr)keyBuffer, false);
+            buffer.CopyTo(new Span<byte>(keyBuffer + 8, keyLength));
+
             IntPtr keyHandle;
             Interop.CheckReturnOrThrow(
-                BCryptImportKeyPair(_provider, IntPtr.Zero, BCRYPT_ECCPUBLIC_BLOB, out keyHandle, (IntPtr)keyBuffer,keyLength + 8,  0));
+                BCryptImportKeyPair(_provider, IntPtr.Zero, BCRYPT_ECCPUBLIC_BLOB, out keyHandle, (IntPtr)keyBuffer, keyLength + 8, 0));
 
             IntPtr secretHandle;
             Interop.CheckReturnOrThrow(
@@ -212,22 +209,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
 
             InteropSecrets.CalculateMasterSecret(secretHandle, _context.SeedBuffer.ToArray());
 
-            //int secretSize;
-            //Interop.CheckReturnOrThrow(
-            //    InteropSecrets.BCryptDeriveKey(secretHandle, "HASH", IntPtr.Zero, IntPtr.Zero, 0, out secretSize, 0));
-
-            //var secretBuffer = new byte[secretSize];
-            //fixed (void* secretPtr = secretBuffer)
-            //{
-            //    Interop.CheckReturnOrThrow(
-            //         InteropSecrets.BCryptDeriveKey(secretHandle, "HASH", IntPtr.Zero, (IntPtr)secretPtr, secretSize, out secretSize, 0));
-            //}
-            //var masterSecret = new byte[48];
-            //ClientKeyExchange.P_hash(_context.CipherSuite.Hmac, masterSecret, secretBuffer, _context.SeedBuffer.ToArray());
-            //System.IO.File.WriteAllText("C:\\Code\\KeyLog\\Master.log",BitConverter.ToString(masterSecret));
             throw new NotImplementedException();
-
-
         }
     }
 }

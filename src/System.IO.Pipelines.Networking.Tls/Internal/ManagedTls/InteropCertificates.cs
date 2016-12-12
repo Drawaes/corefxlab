@@ -12,21 +12,22 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         private const string Dll = "Ncrypt.dll";
 
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
-        public extern static ReturnCodes NCryptOpenStorageProvider(out IntPtr phProvider, [MarshalAs(UnmanagedType.LPWStr)] string pszProviderName, int dwFlags);
+        public extern static ReturnCodes NCryptOpenStorageProvider(out IntPtr phProvider, string pszProviderName, int dwFlags);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         public extern static ReturnCodes NCryptFreeObject(IntPtr hObject);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
-        public extern static ReturnCodes NCryptOpenKey(IntPtr hProvider, out IntPtr keyPtr, [MarshalAs(UnmanagedType.LPWStr)] string pszKeyName, int dwLegacyKeySpec, int dwFlags);
+        public extern static ReturnCodes NCryptOpenKey(IntPtr hProvider, out IntPtr keyPtr, string pszKeyName, int dwLegacyKeySpec, int dwFlags);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         public extern static ReturnCodes NCryptEnumKeys(IntPtr hProvider, void* unusedScope, out IntPtr result, ref IntPtr enumState, uint dwFlags);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         public extern static ReturnCodes NCryptEnumStorageProviders(out uint pdwProviderCount, out IntPtr pProviderList, uint dwFlags);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
-        public extern static ReturnCodes NCryptGetProperty(IntPtr privateKey, [MarshalAs(UnmanagedType.LPWStr)] string pszProperty, byte* result, uint cbOutput, out uint pcbResult, uint dwFlags);
+        public extern static ReturnCodes NCryptGetProperty(IntPtr privateKey, string pszProperty, byte* result, uint cbOutput, out uint pcbResult, uint dwFlags);
+        [DllImport(Dll, ExactSpelling = true,SetLastError =true,CharSet =CharSet.Unicode)]
+        internal static extern ReturnCodes NCryptSignHash(IntPtr hKey, void* pPaddingInfo, IntPtr pbHashValue, int cbHashValue, IntPtr pbSignature, int cbSignature, out int pcbResult, Padding dwFlags);
 
         [DllImport("Crypt32.dll", ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
-        public extern static bool CryptAcquireCertificatePrivateKey(IntPtr pCert, uint dwFlags, out void* pvParameters, out IntPtr phCryptProvOrNCryptKey,
-        out uint pdwKeySpec, out bool pfCallerFreeProvOrNCryptKey);
+        public extern static bool CryptAcquireCertificatePrivateKey(IntPtr pCert, uint dwFlags, out void* pvParameters, out IntPtr phCryptProvOrNCryptKey, out uint pdwKeySpec, out bool pfCallerFreeProvOrNCryptKey);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         public extern static ReturnCodes NCryptDecrypt(IntPtr hKey, void* pbInput, int cbInput, void* pPaddingInfo, void* pbOutput, int cbOutput, out int pcbResult, uint dwFlags);
 
