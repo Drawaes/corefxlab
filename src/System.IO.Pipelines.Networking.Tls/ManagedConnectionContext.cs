@@ -179,6 +179,9 @@ namespace System.IO.Pipelines.Networking.Tls
                 _clientDataEncrypted = true;
                 return _cachedTask;
             }
+
+            ReadCursor rc = new ReadCursor();
+            
             
             var messageType = (HandshakeMessageType)readBuffer.ReadBigEndian<byte>();
             switch (messageType)
