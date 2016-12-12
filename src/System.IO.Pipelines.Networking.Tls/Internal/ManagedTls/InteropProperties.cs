@@ -32,6 +32,7 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         private const string BCRYPT_HASH_BLOCK_LENGTH = "HashBlockLength";
         private const string BCRYPT_CHAIN_MODE_CBC = "ChainingModeCBC";
         private const string BCRYPT_CHAIN_MODE_GCM = "ChainingModeGCM";
+        private const string BCRYPT_PROVIDER_HANDLE = "ProviderHandle";
 
         public static string GetBlockChainingMode(IntPtr provider)
         {
@@ -44,6 +45,15 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
             var output = default(BCRYPT_AUTH_TAG_LENGTHS_STRUCT);
             int result;
             BCryptGetProperty(provider, BCRYPT_AUTH_TAG_LENGTH, &output, size, out result, 0);
+            return output;
+        }
+
+        public static IntPtr GetProviderHandle(IntPtr key)
+        {
+            var size = IntPtr.Size;
+            IntPtr output = IntPtr.Zero;
+            int result;
+            Interop.CheckReturnOrThrow(BCryptGetProperty(key, BCRYPT_PROVIDER_HANDLE, &output, size, out result, 0));
             return output;
         }
         

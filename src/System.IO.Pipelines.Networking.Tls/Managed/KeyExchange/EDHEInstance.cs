@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Internal.ManagedTls;
+using System.IO.Pipelines.Networking.Tls.Managed.Handshake;
 using System.IO.Pipelines.Networking.Tls.Managed.Hash;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -15,17 +16,17 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
         private readonly ManagedConnectionContext _context;
         private string _selectedCurve;
         private EllipticCurves _curveType;
-        private IntPtr _provider;
+        private EdhKeyExchange _providerFactory;
         private IntPtr _eKeyPair;
         private int _eKeySize;
+        private IntPtr _provider;
         private const string BCRYPT_ECCPUBLIC_BLOB = "ECCPUBLICBLOB";
 
-        public EDHEInstance(IntPtr key, ManagedConnectionContext context, IntPtr provider)
+        public EDHEInstance(IntPtr key, ManagedConnectionContext context, EdhKeyExchange providerFactory)
         {
             _context = context;
             _key = key;
-            _provider = provider;
-            InteropCurves.GetEccCurveNames(provider);
+            _providerFactory = providerFactory;
         }
         public void ProcessEcPointFormats(ReadableBuffer buffer)
         {
@@ -68,7 +69,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
             GenerateEphemeralKey();
 
             var hash = WriteServerECDHParams(ref buffer);
-            
+
             buffer.Ensure(2);
             buffer.WriteBigEndian((byte)_context.CipherSuite.Hash.HashType);
             buffer.WriteBigEndian((byte)KeyExchangeType.RSA);
@@ -134,23 +135,26 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
             Interop.CheckReturnOrThrow(
                 InteropPki.BCryptExportKey(_eKeyPair, IntPtr.Zero, BCRYPT_ECCPUBLIC_BLOB, (IntPtr)keyBuffer, _eKeySize + 8, out resultSize, 0));
 
+
             var keySpan = new Span<byte>(keyBuffer + 8, _eKeySize);
             buffer.Write(keySpan);
             //-------------------Written Server ECHDE PARAMS
 
             var hash = _context.CipherSuite.Hash.GetLongRunningHash();
             hash.HashData(_context.RandomData.ToArray());
-            hash.HashData(bookMark.Slice(0,serverParamsSize));
+            hash.HashData(bookMark.Slice(0, serverParamsSize));
             return hash.Finish();
         }
 
         private void GenerateEphemeralKey()
         {
-            //Step 1 generate a new key
+            //get the provider for the named key
+            _provider = _providerFactory.GetProvider(_selectedCurve);
+
+            //generate a new key
             IntPtr ptr;
             Interop.CheckReturnOrThrow(
                 Interop.BCryptGenerateKeyPair(_provider, out ptr, 0, 0));
-            InteropCurves.SetEccCurveName(ptr, _selectedCurve);
             Interop.CheckReturnOrThrow(
                 Interop.BCryptFinalizeKeyPair(ptr, 0));
             _eKeyPair = ptr;
@@ -160,9 +164,70 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.KeyExchange
             _eKeySize = keySize - 8;
         }
 
-        public void ProcessClientKeyExchange(ReadableBuffer buffer)
+        public unsafe void ProcessClientKeyExchange(ReadableBuffer buffer)
         {
+            
+            _context.ClientFinishedHash.HashData(buffer);
+            _context.ServerFinishedHash.HashData(buffer);
+
+            buffer = buffer.Slice(1); // Slice off type
+            uint contentSize = buffer.ReadBigEndian<ushort>();
+            buffer = buffer.Slice(2);
+            contentSize = (contentSize << 8) + buffer.ReadBigEndian<byte>();
+            buffer = buffer.Slice(1);
+
+            if (buffer.Length != contentSize)
+            {
+                throw new IndexOutOfRangeException($"The message buffer contains the wrong amount of data for our operation");
+            }
+
+            
+
+            var keyLength = buffer.ReadBigEndian<byte>();
+            keyLength --;
+            buffer = buffer.Slice(1);
+            var compressionType = buffer.ReadBigEndian<byte>();
+            buffer = buffer.Slice(1, buffer.End);
+            if (buffer.Length != keyLength || compressionType != 4)
+            {
+                throw new Alerts.AlertException(Alerts.AlertDescription.Descriptions[50], Alerts.AlertServerity.Fatal);
+            }
+            
+            //Now we have the point and can load the key
+            var keyBuffer = stackalloc byte[keyLength + 8];
+            var blobHeader = new InteropStructs.BCRYPT_ECCKEY_BLOB();
+            //BCRYPT_ECDH_PUBLIC_GENERIC_MAGIC    0x504B4345
+            blobHeader.dwMagic = 0x504B4345;
+            blobHeader.cbKey = keyLength/2;
+            Marshal.StructureToPtr(blobHeader,(IntPtr)keyBuffer,false);
+            buffer.CopyTo(new Span<byte>(keyBuffer + 8,keyLength));
+            
+            IntPtr keyHandle;
+            Interop.CheckReturnOrThrow(
+                BCryptImportKeyPair(_provider, IntPtr.Zero, BCRYPT_ECCPUBLIC_BLOB, out keyHandle, (IntPtr)keyBuffer,keyLength + 8,  0));
+
+            IntPtr secretHandle;
+            Interop.CheckReturnOrThrow(
+                InteropSecrets.BCryptSecretAgreement(_eKeyPair, keyHandle, out secretHandle, 0));
+
+            InteropSecrets.CalculateMasterSecret(secretHandle, _context.SeedBuffer.ToArray());
+
+            //int secretSize;
+            //Interop.CheckReturnOrThrow(
+            //    InteropSecrets.BCryptDeriveKey(secretHandle, "HASH", IntPtr.Zero, IntPtr.Zero, 0, out secretSize, 0));
+
+            //var secretBuffer = new byte[secretSize];
+            //fixed (void* secretPtr = secretBuffer)
+            //{
+            //    Interop.CheckReturnOrThrow(
+            //         InteropSecrets.BCryptDeriveKey(secretHandle, "HASH", IntPtr.Zero, (IntPtr)secretPtr, secretSize, out secretSize, 0));
+            //}
+            //var masterSecret = new byte[48];
+            //ClientKeyExchange.P_hash(_context.CipherSuite.Hmac, masterSecret, secretBuffer, _context.SeedBuffer.ToArray());
+            //System.IO.File.WriteAllText("C:\\Code\\KeyLog\\Master.log",BitConverter.ToString(masterSecret));
             throw new NotImplementedException();
+
+
         }
     }
 }

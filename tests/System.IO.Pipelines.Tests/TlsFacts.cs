@@ -37,7 +37,7 @@ namespace System.IO.Pipelines.Tests
             {
                 var loopback = new LoopbackPipeline(factory);
 
-                var ipEndPoint = new IPEndPoint(IPAddress.Loopback, 443);
+                var ipEndPoint = new IPEndPoint(IPAddress.Parse("192.168.1.70"), 443);
                 socketClient.OnConnection(s => context.CreateSecurePipeline(s).PerformHandshakeAsync());
                 socketClient.Start(ipEndPoint);
                 Console.ReadLine();

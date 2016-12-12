@@ -39,13 +39,13 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         private const uint CERT_NCRYPT_KEY_SPEC = 0xFFFFFFFF;
         private const string AlgoProperty = "Algorithm Name";
 
-        private static readonly IntPtr _storageProvider;
+        internal static readonly IntPtr s_storageProvider;
 
         static InteropCertificates()
         {
             IntPtr storageProvider;
             Interop.CheckReturnOrThrow(NCryptOpenStorageProvider(out storageProvider, MS_KEY_STORAGE_PROVIDER, 0));
-            _storageProvider = storageProvider;
+            s_storageProvider = storageProvider;
         }
 
         public enum Padding : uint

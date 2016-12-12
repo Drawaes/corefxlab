@@ -55,10 +55,6 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         {
             public int Number;
             public IntPtr PointerToArray;
-        }
-
-
-        
-        
+        }        
     }
 }

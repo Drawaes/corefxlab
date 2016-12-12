@@ -11,5 +11,14 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Alerts
         {
 
         }
+
+        public AlertException(AlertDescription description, AlertServerity serverity)
+        {
+            Description = description;
+            Serverity = serverity;
+        }
+
+        public AlertDescription Description { get; private set;}
+        public AlertServerity Serverity { get; private set;}
     }
 }

@@ -24,6 +24,13 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         }
 
         [StructLayout(LayoutKind.Sequential)]
+        internal struct BCRYPT_ECCKEY_BLOB
+        {
+            public uint dwMagic;
+            public int cbKey;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
         public struct BCRYPT_AUTH_TAG_LENGTHS_STRUCT
         {
             public int dwMinLength;

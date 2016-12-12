@@ -17,14 +17,18 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         //internal static extern ReturnCodes BCryptSignHash(IntPtr hKey, IntPtr pPaddingInfo, IntPtr pbInput, int cbInput, IntPtr pbOutput, int cbOutput, out int pcbResult, uint dwFlags);
         [DllImport(NcryptDll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         internal static extern ReturnCodes NCryptSignHash(IntPtr hKey,void* pPaddingInfo,IntPtr pbHashValue,int cbHashValue,IntPtr pbSignature,int cbSignature,out int pcbResult,Padding dwFlags);
-        //[DllImport(NcryptDll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
-
+        [DllImport(NcryptDll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
+        internal static extern ReturnCodes NCryptImportKey(IntPtr hProvider,IntPtr hImportKey, string pszBlobType,IntPtr pParameterList, out IntPtr phKey, IntPtr pbData, int cbData,uint dwFlags);
+        [DllImport(NcryptDll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
+        internal static extern ReturnCodes BCryptImportKeyPair(IntPtr hAlgorithm, IntPtr hImportKey, string pszBlobType, out IntPtr phKey, IntPtr pbInput, int cbInput, uint dwFlags);
 
         private const string NCRYPT_ALGORITHM_PROPERTY = "Algorithm Name";
 
 
         internal const string BCRYPT_DH_PUBLIC_BLOB = "DHPUBLICBLOB";
-
+        internal const string BCRYPT_ECCPUBLIC_BLOB = "ECCPUBLICBLOB";
+        internal const uint CRYPT_DO_NOT_FINALIZE_FLAG = 0x400;
+        
         public enum Padding : uint
         {
             NONE = 0,
@@ -32,7 +36,7 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
             BCRYPT_PAD_PSS = 0x00000008,
             BCRYPT_PAD_PKCS1_OPTIONAL_HASH_OID  =0x00000010 
         }
-
+        
         [StructLayout(LayoutKind.Sequential)]
         internal struct BCRYPT_PKCS1_PADDING_INFO
         {

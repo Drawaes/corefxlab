@@ -83,6 +83,16 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.BulkCiphers
             return returnKey;
         }
 
+        public Tuple<BulkCipherKey,BulkCipherKey> GetKeyPair(Action<byte[]> keyMaterialFactory, Hash.HashProvider hmacProvider)
+        {
+            int amountOfKeyMaterialNeeded = KeySizeInBytes + NounceSaltLength + (RequiresHmac ?  hmacProvider.BlockLength : 0);
+            amountOfKeyMaterialNeeded *= 2;
+            byte[] keyMaterialNeeded = new byte[amountOfKeyMaterialNeeded];
+            keyMaterialFactory(keyMaterialNeeded);
+
+            throw new NotImplementedException();
+        }
+
         public void SetBufferPool(NativeBufferPool pool)
         {
             _pool = pool;

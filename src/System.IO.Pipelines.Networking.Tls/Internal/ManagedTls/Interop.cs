@@ -71,6 +71,8 @@ namespace System.IO.Pipelines.Networking.Tls.Internal.ManagedTls
         internal extern static ReturnCodes BCryptHash(IntPtr hAlgorithm, void* pbSecret, int cbSecret, void* pbInput, int cbInput, void* pbOutput, int cbOutput);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true)]
         internal static extern ReturnCodes BCryptImportKey(IntPtr hAlgorithm, IntPtr hImportKey, [MarshalAs(UnmanagedType.LPWStr)] string pszBlobType, [Out] out IntPtr phKey, [In, Out] IntPtr pbKeyObject, int cbKeyObject, [In, MarshalAs(UnmanagedType.LPArray)] byte[] pbInput, int cbInput, int dwFlags);
+        [DllImport(Dll, ExactSpelling = true, SetLastError = true)]
+        internal static extern ReturnCodes BCryptImportKey(IntPtr hAlgorithm, IntPtr hImportKey, [MarshalAs(UnmanagedType.LPWStr)] string pszBlobType, [Out] out IntPtr phKey, [In, Out] IntPtr pbKeyObject, int cbKeyObject, IntPtr pbInput, int cbInput, int dwFlags);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         internal static extern ReturnCodes BCryptDecrypt(IntPtr hKey, [In, MarshalAs(UnmanagedType.LPArray)] byte[] pbInput,
                                                            int cbInput, [In, Out] ref InteropStructs.BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO pPaddingInfo,
