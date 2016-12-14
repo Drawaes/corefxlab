@@ -20,11 +20,18 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
             _inputPipeline = factory.Create();
             _outputPipeline = factory.Create();
             _securityContext = securityContext;
-            _connectionState = new ConnectionState();
+            _connectionState = new ConnectionState(securityContext, this);
+            StartReading();
         }
 
         public IPipelineReader Input => _outputPipeline;
         public IPipelineWriter Output => _inputPipeline;
+        public ApplicationLayerProtocolIds NegotiatedProtocol { get; internal set; }
+
+        public Task<ApplicationLayerProtocolIds> PerformHandshakeAsync()
+        {
+            return _handShakeCompleted.Task;
+        }
 
         private async void StartReading()
         {
@@ -47,13 +54,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                             _connectionState.CheckForValidFrameType(frameType);
                             _connectionState.DecryptRecord(ref messageBuffer);
 
-                            if(frameType == TlsFrameType.AppData)
+                            if (frameType == TlsFrameType.AppData)
                             {
                                 var outBuffer = _outputPipeline.Alloc();
                                 outBuffer.Append(messageBuffer);
                                 await outBuffer.FlushAsync();
                             }
-                            else if(frameType == TlsFrameType.Handshake)
+                            else if (frameType == TlsFrameType.Handshake)
                             {
                                 await _connectionState.ProcessHandshakeAsync(messageBuffer, _lowerConnection.Output);
                             }
@@ -63,13 +70,16 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                             }
                         }
                     }
-                    catch { }
+                    finally
+                    {
+                        _lowerConnection.Input.Advance(buffer.Start, buffer.End);
                     }
+                }
             }
             catch
             { }
         }
-        
+
         public void Dispose()
         {
         }
@@ -100,9 +110,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                 throw new FormatException($"The tls frame type was invalid value was {frameType}");
             }
             //now we get the version
-            var version = (TlsVersion) buffer.Slice(1).ReadBigEndian<ushort>();
+            var version = (TlsVersion)buffer.Slice(1).ReadBigEndian<ushort>();
 
-            if (!Enum.IsDefined(typeof(TlsVersion),version))
+            if (!Enum.IsDefined(typeof(TlsVersion), version))
             {
                 messageBuffer = default(ReadableBuffer);
                 throw new FormatException($"The tls frame type was invalid due to the version value was {frameType}");

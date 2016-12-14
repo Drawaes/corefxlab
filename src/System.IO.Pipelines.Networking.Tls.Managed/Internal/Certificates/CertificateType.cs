@@ -13,6 +13,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates
         Anonymous = 0,
         Rsa = 1,
         Dsa = 2,
-        Ecdsa = 3
+        Ecdsa = 3,
+        //Made up ones
+        Dss = 4,
+        Psk = 5
+
     }
 }

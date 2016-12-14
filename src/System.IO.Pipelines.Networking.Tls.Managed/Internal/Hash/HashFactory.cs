@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
 {
-    public class HashFactory
+    public class HashFactory:IDisposable
     {
         private readonly HashProvider[] _hashProviders;
         private readonly HashProvider[] _hmacProviders;
@@ -17,6 +17,23 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
             var arraySize = ((byte[])Enum.GetValues(typeof(HashType))).Max() + 1;
             _hashProviders = new HashProvider[arraySize];
             _hmacProviders = new HashProvider[arraySize];
+        }
+
+        public void Dispose()
+        {
+            for(int i = 0; i < _hashProviders.Length; i++)
+            {
+                try
+                {
+                    _hashProviders[i]?.Dispose();
+                }
+                catch { }
+                try
+                {
+                    _hmacProviders[i]?.Dispose();
+                }
+                catch { }
+            }
         }
 
         public HashProvider GetHashProvider(HashType algo)
@@ -36,6 +53,26 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
             {
                 _hashProviders[alg] = provider;
                 return provider;
+            }
+            return null;
+        }
+
+        public HashProvider GetHashProvider(string algo)
+        {
+            HashType hashType;
+            if(Enum.TryParse(algo,true,out hashType))
+            {
+                return GetHashProvider(hashType);
+            }
+            return null;
+        }
+
+        public HashProvider GetHmacProvider(string algo)
+        {
+            HashType hashType;
+            if (Enum.TryParse(algo, true, out hashType))
+            {
+                return GetHmacProvider(hashType);
             }
             return null;
         }

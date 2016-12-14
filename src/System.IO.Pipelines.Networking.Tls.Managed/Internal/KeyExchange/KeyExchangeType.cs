@@ -5,8 +5,12 @@ using System.Threading.Tasks;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
 {
-    internal interface IKeyExchangeProvider:IDisposable
+    internal enum KeyExchangeType
     {
-        IKeyExchangeInstance GetInstance(ConnectionState state);
+        None,
+        DH,
+        DHE,
+        ECDH,
+        ECDHE,
     }
 }

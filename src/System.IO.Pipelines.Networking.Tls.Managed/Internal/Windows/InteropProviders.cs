@@ -63,23 +63,28 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
             }
         }
 
-        internal static void CloseHashProvider(IntPtr provider)
+        internal static void CloseProvider(IntPtr provider)
         {
             ExceptionHelper.CheckReturnCode(BCryptCloseAlgorithmProvider(provider, 0));
         }
 
         internal static IntPtr OpenHashProvider(string provider, bool isHmac)
         {
+            return OpenProvider(provider, isHmac, HashAlgorithms);
+        }
+
+        private static IntPtr OpenProvider(string provider, bool isHmac, BCRYPT_ALGORITHM_IDENTIFIER[] identifiers)
+        {
             var isValid = false;
-            for (int i = 0; i < HashAlgorithms.Length; i++)
+            for (int i = 0; i < identifiers.Length; i++)
             {
-                if (HashAlgorithms[i].pszName == provider)
+                if (identifiers[i].pszName == provider)
                 {
                     isValid = true;
                     break;
                 }
             }
-            if(!isValid)
+            if (!isValid)
             {
                 return IntPtr.Zero;
             }
@@ -87,6 +92,16 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
             ExceptionHelper.CheckReturnCode(
                 BCryptOpenAlgorithmProvider(out provPtr, provider, null, isHmac ? BCRYPT_ALG_HANDLE_HMAC_FLAG : 0));
             return provPtr;
+        }
+
+        public static IntPtr OpenSecretProvider(string provider)
+        {
+            return OpenProvider(provider, false, SecretAlgorithms);
+        }
+
+        internal static IntPtr OpenBulkProvider(string provider)
+        {
+            return OpenProvider(provider,false, CipherAlgorithms);
         }
     }
 }

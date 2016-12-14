@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates
 {
-    public class CertificateFactory
+    internal class CertificateFactory
     {
         public ICertificate GetCertificate(X509Certificate2 certificate)
         {

@@ -5,8 +5,12 @@ using System.Threading.Tasks;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates
 {
-    public interface ICertificate
+    internal unsafe interface ICertificate
     {
         CertificateType CertificateType { get; }
+        byte[] RawData { get;}
+        int SignatureSize { get;}
+
+        void SignHash(IntPtr hashId, Memory<byte> outputBuffer, byte* hash, int hashLength);
     }
 }

@@ -14,13 +14,15 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
         private const uint CERT_NCRYPT_KEY_SPEC = 0xFFFFFFFF;
         private const uint CRYPT_ACQUIRE_ONLY_NCRYPT_KEY_FLAG = 0x00040000;
         private const string AlgoProperty = "Algorithm Name";
-
+        
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         private extern static ReturnCodes NCryptOpenStorageProvider(out IntPtr phProvider, string pszProviderName, int dwFlags);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         private extern static ReturnCodes NCryptGetProperty(IntPtr privateKey, string pszProperty, byte* result, uint cbOutput, out uint pcbResult, uint dwFlags);
         [DllImport("Crypt32.dll", ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         private extern static bool CryptAcquireCertificatePrivateKey(IntPtr pCert, uint dwFlags, out void* pvParameters, out IntPtr phCryptProvOrNCryptKey, out uint pdwKeySpec, out bool pfCallerFreeProvOrNCryptKey);
+        [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
+        internal static extern ReturnCodes NCryptSignHash(IntPtr hKey, void* pPaddingInfo, IntPtr pbHashValue, int cbHashValue, IntPtr pbSignature, int cbSignature, out int pcbResult, Padding dwFlags);
 
         internal static readonly IntPtr s_storageProvider;
 
@@ -29,6 +31,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
             IntPtr storageProvider;
             ExceptionHelper.CheckReturnCode(NCryptOpenStorageProvider(out storageProvider, MS_KEY_STORAGE_PROVIDER, 0));
             s_storageProvider = storageProvider;
+        }
+
+        public enum Padding : uint
+        {
+            NCRYPT_NO_PADDING_FLAG = 0x00000001,
+            NCRYPT_PAD_PKCS1_FLAG = 0x00000002,
+            NCRYPT_PAD_OAEP_FLAG = 0x00000004,
         }
 
         public static IntPtr GetPrivateKeyHandle(X509Certificate2 cert)
@@ -43,6 +52,14 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
                 throw new InvalidOperationException();
             }
             return keyPointer;
+        }
+
+        public static int GetKeySize(IntPtr keyPointer)
+        {
+            int keyUse;
+            uint result;
+            ExceptionHelper.CheckReturnCode(NCryptGetProperty(keyPointer, "Length", (byte*)&keyUse, 4, out result, 0));
+            return keyUse;
         }
 
         public static string GetPrivateKeyAlgo(IntPtr keyPointer)

@@ -14,12 +14,15 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
         private IntPtr _hashHandle;
         private int _stateSize;
         private IntPtr _providerHandle;
+        private int _hashSize;
 
-        public HashInstance(IntPtr providerHandle, NativeBufferPool pool, int stateSize)
+        public HashInstance(IntPtr providerHandle, NativeBufferPool pool, int stateSize, int hashSize)
         {
             _pool = pool;
             _stateSize = stateSize;
             _buffer = pool.Rent(stateSize);
+            _providerHandle = providerHandle;
+            _hashSize = hashSize;
             try
             {
                 _hashHandle = InteropHash.CreateHash(_providerHandle, _buffer.Memory);
@@ -30,6 +33,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
                 throw;
             }
         }
+
+        public int HashSize => _hashSize;
 
         public void HashData(Memory<byte> memory)
         {
@@ -69,6 +74,35 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
             else
             {
                 InteropHash.FinishHash(_hashHandle, output);
+                Dispose();
+            }
+        }
+
+        public unsafe void Finish(byte* output,int length, bool completed)
+        {
+            if (!completed)
+            {
+                var tmpBuffer = _pool.Rent(_stateSize);
+                try
+                {
+                    var tempHash = InteropHash.Duplicate(_hashHandle, tmpBuffer.Memory);
+                    try
+                    {
+                        InteropHash.FinishHash(tempHash, output, length);
+                    }
+                    finally
+                    {
+                        InteropHash.DestroyHash(tempHash);
+                    }
+                }
+                finally
+                {
+                    tmpBuffer.Release();
+                }
+            }
+            else
+            {
+                InteropHash.FinishHash(_hashHandle, output, length);
                 Dispose();
             }
         }

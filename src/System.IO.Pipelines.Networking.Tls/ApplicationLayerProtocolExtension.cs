@@ -2,7 +2,7 @@
 
 namespace System.IO.Pipelines.Networking.Tls
 {
-    internal static class ApplicationLayerProtocolExtension
+    public static class ApplicationLayerProtocolExtension
     {
         //Source iana registry http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
         private static readonly byte[] s_http11 = {0x68, 0x74, 0x74, 0x70, 0x2f, 0x31, 0x2e, 0x31}; //("http/1.1")
@@ -17,7 +17,7 @@ namespace System.IO.Pipelines.Networking.Tls
         private static readonly byte[] s_confidentialWebRtcMediaAndData = {0x63, 0x2d, 0x77, 0x65, 0x62, 0x72, 0x74, 0x63}; //("c-webrtc")
         private static readonly byte[] s_ftp = {0x66, 0x74, 0x70}; //("ftp")
 
-        private static readonly byte[][] _allProtocols =
+        public static readonly byte[][] AllProtocols =
         {
             s_http11,
             s_http2overTls,
@@ -76,7 +76,7 @@ namespace System.IO.Pipelines.Networking.Tls
             {
                 if (((int) s_listOfProtocolIds.GetValue(i) & (int) supportedProtocols) > 0)
                 {
-                    listLength += (short) (_allProtocols[i].Length + 1);
+                    listLength += (short) (AllProtocols[i].Length + 1);
                 }
             }
             byte[] returnValue;
@@ -110,7 +110,7 @@ namespace System.IO.Pipelines.Networking.Tls
             {
                 if (((int) s_listOfProtocolIds.GetValue(i) & (int) supportedProtocols) > 0)
                 {
-                    var value = _allProtocols[i];
+                    var value = AllProtocols[i];
                     spa.Write((byte) value.Length);
                     spa = spa.Slice(1);
                     var valueSpan = new Span<byte>(value);
@@ -120,17 +120,28 @@ namespace System.IO.Pipelines.Networking.Tls
             }
         }
 
-        internal static ApplicationLayerProtocolIds GetNegotiatedProtocol(Span<byte> matchedValue)
+        public static bool TryGetNegotiatedProtocol(Span<byte> matchedValue, out ApplicationLayerProtocolIds protocolId)
         {
-            for (int i = 1; i < _allProtocols.Length; i++)
+            for (int i = 1; i < AllProtocols.Length; i++)
             {
-                var proto = _allProtocols[i];
+                var proto = AllProtocols[i];
                 if (matchedValue.SequenceEqual(proto))
                 {
-                    return (ApplicationLayerProtocolIds) (1 << (i - 1));
+                    protocolId = (ApplicationLayerProtocolIds)(1 << (i));
+                    return true;
                 }
             }
-            throw new ArgumentOutOfRangeException($"Could not match the negotiated protocol to a valid protocol");
+            protocolId = ApplicationLayerProtocolIds.None;
+            return false;
+        }
+        internal static ApplicationLayerProtocolIds GetNegotiatedProtocol(Span<byte> matchedValue)
+        {
+            ApplicationLayerProtocolIds proto;
+            if (!TryGetNegotiatedProtocol(matchedValue, out proto))
+            {
+                throw new ArgumentOutOfRangeException($"Could not match the negotiated protocol to a valid protocol");
+            }
+            return proto;
         }
     }
 }

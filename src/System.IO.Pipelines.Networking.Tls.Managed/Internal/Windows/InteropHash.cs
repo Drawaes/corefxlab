@@ -46,6 +46,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
             ExceptionHelper.CheckReturnCode(BCryptFinishHash(hash, bufferPointer, output.Length, 0));
         }
 
+        public static void FinishHash(IntPtr hash, byte* buffer, int length)
+        {
+            ExceptionHelper.CheckReturnCode(BCryptFinishHash(hash, buffer, length, 0));
+        }
+        
         public static IntPtr Duplicate(IntPtr hash, Memory<byte> buffer)
         {
             void* pointer;
@@ -63,9 +68,18 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
             void* pointer;
             if (!buffer.TryGetPointer(out pointer))
             {
-                throw new InvalidOperationException("Problem getting the pointer for a memory block");
+                ArraySegment<byte> arrayBuffer;
+                buffer.TryGetArray(out arrayBuffer);
+                fixed(byte* arrayPtr = arrayBuffer.Array)
+                {
+                    var frontPtr = arrayPtr + arrayBuffer.Offset;
+                    ExceptionHelper.CheckReturnCode(BCryptHashData(hash, frontPtr, buffer.Length, 0));
+                }
             }
-            ExceptionHelper.CheckReturnCode(BCryptHashData(hash, pointer, buffer.Length, 0));
+            else
+            {
+                ExceptionHelper.CheckReturnCode(BCryptHashData(hash, pointer, buffer.Length, 0));
+            }
         }
 
     }
