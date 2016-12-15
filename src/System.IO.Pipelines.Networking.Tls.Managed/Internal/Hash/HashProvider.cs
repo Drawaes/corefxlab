@@ -50,10 +50,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
             return new HashInstance(_providerHandle, _pool, _bufferSizeNeededForState, _hashLength);
         }
 
-        //public unsafe void HashValue(byte* output, int outputLength, byte* secret, int secretLength, byte* message, int messageLength)
-        //{
-        //    Interop.CheckReturnOrThrow(Interop.BCryptHash(_providerHandle, secret, secretLength, message, messageLength, output, outputLength));
-        //}
+        public unsafe void HashValue(byte* output, int outputLength, byte* secret, int secretLength, byte* message, int messageLength)
+        {
+            ExceptionHelper.CheckReturnCode(InteropHash.BCryptHash(_providerHandle, secret, secretLength, message, messageLength, output, outputLength));
+        }
 
         public void Dispose()
         {

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCipher;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash;
@@ -15,7 +16,6 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
     {
         private CipherSuite _currentSuite;
         private bool _handshakeComplete;
-        private bool _changedCipherSpec;
         private byte[] _clientRandom = new byte[32];
         private byte[] _serverRandom = new byte[32];
         private ManagedSecurityContext _securityContext;
@@ -24,7 +24,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
         private SecureManagedPipeline _managedPipeline;
         private bool _serverDataEncrypted;
         private bool _clientDataEncrypted;
-        
+        private static readonly Task s_cachedTask = Task.FromResult(0);
+        private byte[] _masterSecret;
+
         public ConnectionState(ManagedSecurityContext securityContext, SecureManagedPipeline managedPipeline)
         {
             _managedPipeline = managedPipeline;
@@ -32,34 +34,43 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
         }
 
         public bool ServerDataEncrypted => _serverDataEncrypted;
+        public bool ClientDataEncrypted { internal set { _clientDataEncrypted = value;} get { return _clientDataEncrypted;} }
         public HashInstance HandshakeHash => _handshakeHash;
         public byte[] ServerRandom => _serverRandom;
         public byte[] ClientRandom => _clientRandom;
         public CipherSuite CipherSuite => _currentSuite;
         public SecureManagedPipeline Pipe => _managedPipeline;
         public ICertificate Certificate => _securityContext.Certificate;
-        
+        internal BulkCipherInstance ClientKey { get; set; }
+        internal BulkCipherInstance ServerKey { get; set; }
+
         public void CheckForValidFrameType(TlsFrameType frameType)
         {
-            switch(frameType)
+            switch (frameType)
             {
                 case TlsFrameType.Invalid:
                 case TlsFrameType.Incomplete:
-                case TlsFrameType.Alert:
                     throw new InvalidOperationException("Bad frame");
                 case TlsFrameType.AppData:
-                    if(!_handshakeComplete)
+                    if (!_handshakeComplete)
                     {
                         throw new InvalidOperationException("Data cannot be received before we switch to encrypted mode");
                     }
                     break;
                 case TlsFrameType.Handshake:
-                    if(_handshakeComplete)
+                    if (_handshakeComplete)
                     {
                         throw new InvalidOperationException("We don't support renegotiation at this time");
                     }
                     break;
                 case TlsFrameType.ChangeCipherSpec:
+                    if(ClientKey == null || ServerKey == null)
+                    {
+                       throw new InvalidOperationException("Tried to change cipher spec when bulk keys were not setup");
+                    }
+                    break;
+                case TlsFrameType.Alert:
+                    break;
                 default:
                     throw new NotImplementedException("Get around to this!");
 
@@ -68,41 +79,54 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
 
         public void DecryptRecord(ref ReadableBuffer buffer)
         {
-            if(!_changedCipherSpec)
+            if (_clientDataEncrypted)
             {
-                //Do nothing the buffer is just fine the way it is we aren't decrypting yet
-                return;
+                ClientKey.DecryptFrame(ref buffer);
             }
-
-            throw new NotImplementedException("No decryption yet!");
+            buffer = buffer.Slice(5);
         }
 
         internal Task ProcessHandshakeAsync(ReadableBuffer messageBuffer, IPipelineWriter output)
         {
             var handshakeType = messageBuffer.ReadBigEndian<HandshakeMessageType>();
 
-            switch(handshakeType)
+            switch (handshakeType)
             {
                 case HandshakeMessageType.ClientHello:
-                    ProcessClientHello(messageBuffer);
-                    var writeBuffer = output.Alloc();
-                    ServerHello.Write(ref writeBuffer, this);
-                    writeBuffer.Commit();
-                    writeBuffer = output.Alloc();
-                    ServerCertificate.Write(ref writeBuffer, this);
-                    writeBuffer.Commit();
-                    writeBuffer = output.Alloc(); 
-                    _keyExchange.WriteServerKeyExchange(ref writeBuffer);
-                    writeBuffer.Commit();
-                    writeBuffer = output.Alloc();
-                    ServerHelloDone.Write(ref writeBuffer, this);
-                    return writeBuffer.FlushAsync();
+                    return HandleClientHello(messageBuffer, output);
                 case HandshakeMessageType.ClientKeyExchange:
-
+                    _masterSecret = _keyExchange.ProcessClientKeyExchange(messageBuffer);
+                    return s_cachedTask;
+                case HandshakeMessageType.Finished:
+                    Finished.ProcessClient(messageBuffer, this, _masterSecret);
+                    var writeBuffer = output.Alloc();
+                    ChangeCipherSpec.Write(ref writeBuffer, this);
+                    _serverDataEncrypted = true;
+                    writeBuffer.Commit();
+                    writeBuffer = output.Alloc();
+                    Finished.WriteServer(ref writeBuffer, this, _masterSecret);
+                    return writeBuffer.FlushAsync();
                 default:
-                    throw new NotImplementedException();      
+                    throw new NotImplementedException();
             }
             throw new NotImplementedException();
+        }
+
+        private Task HandleClientHello(ReadableBuffer messageBuffer, IPipelineWriter output)
+        {
+            ProcessClientHello(messageBuffer);
+            var writeBuffer = output.Alloc();
+            ServerHello.Write(ref writeBuffer, this);
+            writeBuffer.Commit();
+            writeBuffer = output.Alloc();
+            ServerCertificate.Write(ref writeBuffer, this);
+            writeBuffer.Commit();
+            writeBuffer = output.Alloc();
+            _keyExchange.WriteServerKeyExchange(ref writeBuffer);
+            writeBuffer.Commit();
+            writeBuffer = output.Alloc();
+            ServerHelloDone.Write(ref writeBuffer, this);
+            return writeBuffer.FlushAsync();
         }
 
         private void ProcessClientHello(ReadableBuffer buffer)
@@ -181,7 +205,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                         ExtensionAlpn(extensionBuffer);
                         break;
                     case ExtensionType.Supported_groups:
-                         _keyExchange.ProcessSupportedGroupsExtension(extensionBuffer);
+                        _keyExchange.ProcessSupportedGroupsExtension(extensionBuffer);
                         break;
                     case ExtensionType.SessionTicket:
                     case ExtensionType.Extended_master_secret:

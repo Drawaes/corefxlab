@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCipher
 {
-    public class BulkCipherProvider:IDisposable
+    public class BulkCipherProvider : IDisposable
     {
         private readonly bool _isValid;
         private IntPtr _providerHandle;
@@ -17,14 +17,14 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCipher
         private int _keySizeInBytes;
         private readonly string _providerName;
         private readonly bool _requiresHmac = true;
-
+        
         public BulkCipherProvider(string provider)
         {
             _providerName = provider;
             var splitProv = provider.Split('_');
             var parentProv = splitProv[0];
             _providerHandle = InteropProviders.OpenBulkProvider(parentProv);
-            if(_providerHandle == IntPtr.Zero)
+            if (_providerHandle == IntPtr.Zero)
             {
                 _isValid = false;
                 return;
@@ -34,10 +34,14 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCipher
                 _bufferSizeNeededForState = InteropProperties.GetObjectLength(_providerHandle);
                 if (parentProv == "AES")
                 {
-                    var chainingMode = (BulkCipherChainingMode)Enum.Parse(typeof(BulkCipherChainingMode), splitProv[2],true);
-                    if(chainingMode == BulkCipherChainingMode.CBC)
+                    var chainingMode = (BulkCipherChainingMode)Enum.Parse(typeof(BulkCipherChainingMode), splitProv[2], true);
+                    if (chainingMode == BulkCipherChainingMode.CBC)
                     {
                         _requiresHmac = true;
+                    }
+                    else
+                    {
+                        _requiresHmac = false;
                     }
                     _keySizeInBytes = int.Parse(splitProv[1]) / 8;
                     InteropProperties.SetBlockChainingMode(_providerHandle, chainingMode);
@@ -65,6 +69,12 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCipher
         public void SetBufferPool(NativeBufferPool pool)
         {
             _pool = pool;
+        }
+
+        public unsafe BulkCipherInstance GetCipherKey(byte* key, int keyLength)
+        {
+            var returnKey = new BulkCipherInstance(_providerHandle, _pool.Rent(_bufferSizeNeededForState), key, keyLength);
+            return returnKey;
         }
 
         public void Dispose()

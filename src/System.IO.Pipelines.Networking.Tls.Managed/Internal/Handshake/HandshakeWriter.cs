@@ -16,8 +16,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             _state = state;
             buffer.WriteBigEndian(messageType);
             _bookmark = buffer.Memory;
-            _amountWritten = buffer.BytesWritten + 3;
             buffer.Advance(3);
+            _amountWritten = buffer.BytesWritten;
         }
 
         public void Finish(WritableBuffer buffer)
@@ -26,8 +26,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             BufferExtensions.Write24BitNumber(messageContent, _bookmark);
             if (! _state.ServerDataEncrypted)
             {
-                var readableBuffer = buffer.AsReadableBuffer().Slice(_amountWritten - 3);
+                var readableBuffer = buffer.AsReadableBuffer().Slice(_amountWritten - 4);
                 _state.HandshakeHash.HashData(readableBuffer);
+
             }
         }
     }

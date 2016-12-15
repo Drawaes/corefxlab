@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using static System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows.InteropStructs;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
 {
@@ -38,6 +39,25 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
         public static int GetObjectLength(IntPtr provider)
         {
             return GetIntProperty(provider, BCRYPT_OBJECT_LENGTH);
+        }
+
+        public static BCRYPT_AUTH_TAG_LENGTHS_STRUCT GetAuthTagLengths(IntPtr provider)
+        {
+            var size = sizeof(BCRYPT_AUTH_TAG_LENGTHS_STRUCT);
+            var output = default(BCRYPT_AUTH_TAG_LENGTHS_STRUCT);
+            int result;
+            BCryptGetProperty(provider, BCRYPT_AUTH_TAG_LENGTH, &output, size, out result, 0);
+            return output;
+        }
+
+        public static int GetMaxAuthTagLength(IntPtr provider)
+        {
+            return GetAuthTagLengths(provider).dwMaxLength;
+        }
+
+        public static int GetBlockLength(IntPtr provider)
+        {
+            return GetIntProperty(provider, BCRYPT_BLOCK_LENGTH);
         }
 
         public static int GetHashLength(IntPtr provider)

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -11,6 +12,6 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates
         byte[] RawData { get;}
         int SignatureSize { get;}
 
-        void SignHash(IntPtr hashId, Memory<byte> outputBuffer, byte* hash, int hashLength);
+        void SignHash(HashProvider hashId, Memory<byte> outputBuffer, byte* hash, int hashLength);
     }
 }

@@ -106,7 +106,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
                 Dispose();
             }
         }
-
+        
         public void Dispose()
         {
             if (_hashHandle != IntPtr.Zero)

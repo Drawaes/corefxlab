@@ -64,6 +64,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                             {
                                 await _connectionState.ProcessHandshakeAsync(messageBuffer, _lowerConnection.Output);
                             }
+                            else if (frameType == TlsFrameType.ChangeCipherSpec)
+                            {
+                                _connectionState.ClientDataEncrypted = true;
+                            }
                             else
                             {
                                 throw new InvalidOperationException("HUH????");
@@ -121,8 +125,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
             // If we have a full frame slice it out and move the original buffer forward
             if (buffer.Length >= (length + 5))
             {
-                //No need for the header anymore!
-                messageBuffer = buffer.Slice(5, length);
+                //We need the header for message validation
+                messageBuffer = buffer.Slice(0, length + 5);
                 buffer = buffer.Slice(messageBuffer.End);
                 return true;
             }

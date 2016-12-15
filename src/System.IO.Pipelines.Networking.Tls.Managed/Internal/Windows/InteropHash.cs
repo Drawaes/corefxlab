@@ -21,6 +21,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
         private extern static ReturnCodes BCryptDuplicateHash(IntPtr hHash, out IntPtr phNewHash, void* pbHashObject, int cbHashObject, uint dwFlags);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         private extern static ReturnCodes BCryptFinishHash(IntPtr hHash, void* pbOutput, int cbOutput, uint dwFlags);
+        [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
+        internal extern static ReturnCodes BCryptHash(IntPtr hAlgorithm, void* pbSecret, int cbSecret, void* pbInput, int cbInput, void* pbOutput, int cbOutput);
 
         public static void DestroyHash(IntPtr hash) => ExceptionHelper.CheckReturnCode(BCryptDestroyHash(hash));
 

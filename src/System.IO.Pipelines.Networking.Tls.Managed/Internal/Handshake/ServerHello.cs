@@ -10,7 +10,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
     {
         public static void Write(ref WritableBuffer buffer, ConnectionState state)
         {
-            var frame = new FrameWriter(ref buffer, TlsFrameType.Handshake);
+            var frame = new FrameWriter(ref buffer, TlsFrameType.Handshake, state);
             var handshakeFrame = new HandshakeWriter(ref buffer, state, HandshakeMessageType.ServerHello);
 
             //Need to write the version + server random
@@ -44,7 +44,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             }
 
             handshakeFrame.Finish(buffer);
-            frame.Finish(buffer);
+            frame.Finish(ref buffer);
         }
 
         private static bool WriteAlpnExtension(bool needToAdvance, ref WritableBuffer buffer, SecureManagedPipeline pipe)

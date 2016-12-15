@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyGeneration;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows;
 using System.Linq;
 using System.Threading.Tasks;
@@ -56,7 +57,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
 
         public unsafe void WriteServerKeyExchange(ref WritableBuffer buffer)
         {
-            var fw = new FrameWriter(ref buffer, TlsFrameType.Handshake);
+            var fw = new FrameWriter(ref buffer, TlsFrameType.Handshake, _state);
             var hw = new HandshakeWriter(ref buffer, _state, HandshakeMessageType.ServerKeyExchange);
 
             GenerateEphemeralKey();
@@ -83,14 +84,14 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
             buffer.Ensure(_certificate.SignatureSize + 2);
             buffer.WriteBigEndian((ushort)_certificate.SignatureSize);
 
-            _certificate.SignHash(_state.CipherSuite.Hash.AlgId, buffer.Memory.Slice(0,_certificate.SignatureSize), hashResult, hash.HashSize);
+            _certificate.SignHash(_state.CipherSuite.Hash, buffer.Memory.Slice(0,_certificate.SignatureSize), hashResult, hash.HashSize);
             buffer.Advance(_certificate.SignatureSize);
 
             hw.Finish(buffer);
-            fw.Finish(buffer);
+            fw.Finish(ref buffer);
         }
 
-        public unsafe void ProcessClientKeyExchange(ReadableBuffer buffer)
+        public unsafe byte[] ProcessClientKeyExchange(ReadableBuffer buffer)
         {
             _state.HandshakeHash.HashData(buffer);
             buffer = buffer.Slice(1); // Slice off type
@@ -113,10 +114,41 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
                 throw new IndexOutOfRangeException("Bad length or compression type");
             }
 
+            byte[] masterSecret;
             var publicKeyHandle = InteropSecrets.ImportPublicKey(_provider, buffer, keyLength);
-            var secret = InteropSecrets.CreateSecret(publicKeyHandle, _eKeyPair);
-            InteropSecrets.GenerateMasterSecret12(secret, _state.CipherSuite.Hash, _state.ClientRandom, _state.ServerRandom);
+            try
+            {
+                var secret = InteropSecrets.CreateSecret(publicKeyHandle, _eKeyPair);
+                try
+                {
+                    masterSecret = InteropSecrets.GenerateMasterSecret12(secret, _state.CipherSuite.Hash, _state.ClientRandom, _state.ServerRandom);
+                }
+                finally
+                {
+                    InteropSecrets.DestroySecret(secret);
+                }
+            }
+            finally
+            {
+                InteropSecrets.DestroyPublicKey(publicKeyHandle);
+            }
+            //We have the master secret we can move on to making our keys!!!
+            var seed = new byte[_state.ClientRandom.Length + _state.ServerRandom.Length + TlsLabels.KeyExpansionSize];
+            var seedSpan = new Span<byte>(seed);
+            var seedLabel = new Span<byte>((byte*)TlsLabels.KeyExpansion, TlsLabels.KeyExpansionSize);
+            seedLabel.CopyTo(seedSpan);
+            seedSpan = seedSpan.Slice(seedLabel.Length);
 
+            var serverRandom = new Span<byte>(_state.ServerRandom);
+            serverRandom.CopyTo(seedSpan);
+            seedSpan = seedSpan.Slice(serverRandom.Length);
+            var clientRandom = new Span<byte>(_state.ClientRandom);
+            clientRandom.CopyTo(seedSpan);
+
+            var keyMaterial = new byte[_state.CipherSuite.KeyMaterialRequired];
+            PseudoRandomFunctions.P_Hash12(_state.CipherSuite.Hmac, keyMaterial , masterSecret, seed);
+            _state.CipherSuite.ProcessKeyMaterial(_state, keyMaterial);
+            return masterSecret;
         }
 
         private unsafe void WriteServerECDHParams(ref WritableBuffer buffer)

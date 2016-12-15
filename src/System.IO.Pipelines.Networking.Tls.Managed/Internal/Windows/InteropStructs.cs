@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
 {
-    internal static class InteropStructs
+    internal unsafe static class InteropStructs
     {
         [StructLayout(LayoutKind.Sequential)]
         public struct BCRYPT_ALGORITHM_IDENTIFIER
@@ -20,6 +20,48 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
             {
                 return pszName;
             }
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO
+        {
+            internal int cbSize;
+            internal int dwInfoVersion;
+            internal IntPtr pbNonce;            // byte * //16
+            internal int cbNonce;
+            internal IntPtr pbAuthData;         // byte * //28
+            internal int cbAuthData;
+            internal IntPtr pbTag;              // byte * //40
+            internal int cbTag;
+            internal IntPtr pbMacContext;       // byte *
+            internal int cbMacContext;
+            internal int cbAAD;
+            internal long cbData;
+            internal AuthenticatedCipherModeInfoFlags dwFlags;
+        }
+
+        [Flags]
+        internal enum AuthenticatedCipherModeInfoFlags : uint
+        {
+            None = 0x00000000,
+            ChainCalls = 0x00000001,                           // BCRYPT_AUTH_MODE_CHAIN_CALLS_FLAG
+            InProgress = 0x00000002,                           // BCRYPT_AUTH_MODE_IN_PROGRESS_FLAG
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct BCRYPT_AUTH_TAG_LENGTHS_STRUCT
+        {
+            public int dwMinLength;
+            public int dwMaxLength;
+            public int dwIncrement;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct BCRYPT_KEY_DATA_BLOB
+        {
+            internal KeyBlobMagicNumber dwMagic;
+            internal int dwVersion;
+            internal int cbKeyData;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -84,9 +126,6 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
         [StructLayout(LayoutKind.Sequential)]
         internal struct BCRYPT_PKCS1_PADDING_INFO
         {
-            /// <summary>
-            ///     Null-terminated Unicode string that identifies the hashing algorithm used to create the padding.
-            /// </summary>
             internal IntPtr pszAlgId;
         }
     }

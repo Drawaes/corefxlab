@@ -24,13 +24,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
             //Remove TLS_ from the front of the string
             var remainingString = cipherString.Substring(4);
 
-            var keyExchangeAndBulk = remainingString.Split(new string[] { "_WITH_" },StringSplitOptions.None);
+            var keyExchangeAndBulk = remainingString.Split(new string[] { "_WITH_" }, StringSplitOptions.None);
 
             _keyProvider = keyFactory.GetKeyExchange(keyExchangeAndBulk[0]);
 
             //Get the hash and bulk
             var hash = keyExchangeAndBulk[1].Substring(keyExchangeAndBulk[1].LastIndexOf('_') + 1);
-            var bulk = keyExchangeAndBulk[1].Substring(0, keyExchangeAndBulk[1].Length - hash.Length -1);
+            var bulk = keyExchangeAndBulk[1].Substring(0, keyExchangeAndBulk[1].Length - hash.Length - 1);
 
             if (bulk.StartsWith("3"))
             {
@@ -40,7 +40,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
             _bulkCipher = cipherFactory.GetCipher(bulkCipher);
 
             _hash = hmacFactory.GetHashProvider(hash);
-            _hmac = hmacFactory.GetHashProvider(hash);
+            _hmac = hmacFactory.GetHmacProvider(hash);
         }
 
         public string CipherString => _cipherString;
@@ -49,6 +49,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
         public HashProvider Hmac => _hmac;
         public HashProvider Hash => _hash;
         public BulkCipherProvider BulkCipher => _bulkCipher;
+        public int KeyMaterialRequired => 2 * (_bulkCipher.KeySizeInBytes + (_bulkCipher.RequiresHmac ? _hmac.HashLength : 0) + _bulkCipher.NounceSaltLength);
 
         public override string ToString()
         {
@@ -62,6 +63,32 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
                 return false;
             }
             return true;
+        }
+
+        internal unsafe void ProcessKeyMaterial(ConnectionState state, byte[] keyMaterial)
+        {
+            fixed (byte* keyPtr = keyMaterial)
+            {
+                var clientKey = BulkCipher.GetCipherKey(keyPtr, BulkCipher.KeySizeInBytes);
+                var serverPtr = keyPtr + BulkCipher.KeySizeInBytes;
+                var serverKey = BulkCipher.GetCipherKey(serverPtr, BulkCipher.KeySizeInBytes);
+                serverPtr = serverPtr + BulkCipher.KeySizeInBytes;
+
+                if (BulkCipher.RequiresHmac)
+                {
+                    //Currently only support AEAD algos
+                    throw new NotImplementedException();
+                }
+                if (BulkCipher.NounceSaltLength > 0)
+                {
+                    clientKey.SetNouce(new Span<byte>(serverPtr, BulkCipher.NounceSaltLength));
+                    serverPtr = serverPtr + BulkCipher.NounceSaltLength;
+                    serverKey.SetNouce(new Span<byte>(serverPtr, BulkCipher.NounceSaltLength));
+                }
+
+                state.ClientKey = clientKey;
+                state.ServerKey = serverKey;
+            }
         }
     }
 }

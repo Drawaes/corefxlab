@@ -13,6 +13,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
     {
         private const string Dll = "Bcrypt.dll";
         private const uint BCRYPT_ALG_HANDLE_HMAC_FLAG = 8;
+        private const uint BCRYPT_HASH_REUSABLE_FLAG = 0x00000020;
 
         internal static readonly BCRYPT_ALGORITHM_IDENTIFIER[] HashAlgorithms;
         internal static readonly BCRYPT_ALGORITHM_IDENTIFIER[] SecretAlgorithms;
@@ -70,10 +71,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
 
         internal static IntPtr OpenHashProvider(string provider, bool isHmac)
         {
-            return OpenProvider(provider, isHmac, HashAlgorithms);
+            return OpenProvider(provider, isHmac ? BCRYPT_ALG_HANDLE_HMAC_FLAG : 0, HashAlgorithms);
         }
 
-        private static IntPtr OpenProvider(string provider, bool isHmac, BCRYPT_ALGORITHM_IDENTIFIER[] identifiers)
+        private static IntPtr OpenProvider(string provider, uint flags, BCRYPT_ALGORITHM_IDENTIFIER[] identifiers)
         {
             var isValid = false;
             for (int i = 0; i < identifiers.Length; i++)
@@ -90,18 +91,18 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
             }
             IntPtr provPtr;
             ExceptionHelper.CheckReturnCode(
-                BCryptOpenAlgorithmProvider(out provPtr, provider, null, isHmac ? BCRYPT_ALG_HANDLE_HMAC_FLAG : 0));
+                BCryptOpenAlgorithmProvider(out provPtr, provider, null, flags));
             return provPtr;
         }
 
         public static IntPtr OpenSecretProvider(string provider)
         {
-            return OpenProvider(provider, false, SecretAlgorithms);
+            return OpenProvider(provider, 0, SecretAlgorithms);
         }
 
         internal static IntPtr OpenBulkProvider(string provider)
         {
-            return OpenProvider(provider,false, CipherAlgorithms);
+            return OpenProvider(provider,0, CipherAlgorithms);
         }
     }
 }

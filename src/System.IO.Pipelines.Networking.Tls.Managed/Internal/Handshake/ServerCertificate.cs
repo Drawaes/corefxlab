@@ -10,7 +10,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
     {
         public static void Write(ref WritableBuffer buffer, ConnectionState state)
         {
-            var fw = new FrameWriter(ref buffer, TlsFrameType.Handshake);
+            var fw = new FrameWriter(ref buffer, TlsFrameType.Handshake, state);
             var hw = new HandshakeWriter(ref buffer, state, HandshakeMessageType.Certificate);
 
             buffer.Ensure(6);
@@ -20,7 +20,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             buffer.Write(new ReadOnlySpan<byte>(state.Certificate.RawData));
 
             hw.Finish(buffer);
-            fw.Finish(buffer);
+            fw.Finish(ref buffer);
         }
     }
 }
