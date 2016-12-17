@@ -4,9 +4,9 @@ using System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyGeneration
+namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
 {
-    public class PseudoRandomFunctions
+    internal partial class TlsImplementation
     {
         public static unsafe void P_Hash12(HashProvider hash, byte[] keyMaterial, byte[] secret, byte[] seed)
         {

@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Alerts;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake;
-using System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyGeneration;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows;
 using System.Linq;
 using System.Threading.Tasks;
@@ -134,22 +133,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
             {
                 InteropSecrets.DestroyKey(publicKeyHandle);
             }
-            //We have the master secret we can move on to making our keys!!!
-            var seed = new byte[_state.ClientRandom.Length + _state.ServerRandom.Length + TlsLabels.KeyExpansionSize];
-            var seedSpan = new Span<byte>(seed);
-            var seedLabel = new Span<byte>((byte*)TlsLabels.KeyExpansion, TlsLabels.KeyExpansionSize);
-            seedLabel.CopyTo(seedSpan);
-            seedSpan = seedSpan.Slice(seedLabel.Length);
-
-            var serverRandom = new Span<byte>(_state.ServerRandom);
-            serverRandom.CopyTo(seedSpan);
-            seedSpan = seedSpan.Slice(serverRandom.Length);
-            var clientRandom = new Span<byte>(_state.ClientRandom);
-            clientRandom.CopyTo(seedSpan);
-
-            var keyMaterial = new byte[_state.CipherSuite.KeyMaterialRequired];
-            PseudoRandomFunctions.P_Hash12(_state.CipherSuite.Hmac, keyMaterial , masterSecret, seed);
-            _state.CipherSuite.ProcessKeyMaterial(_state, keyMaterial);
+            
             return masterSecret;
         }
 

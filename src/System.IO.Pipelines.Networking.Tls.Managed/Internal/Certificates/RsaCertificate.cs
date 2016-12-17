@@ -38,5 +38,12 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates
             ExceptionHelper.CheckReturnCode(
                 InteropCertificates.NCryptSignHash(_privateKey, &paddInfo, (IntPtr)hash, hashLength, (IntPtr)outputPtr , outputBuffer.Length, out result, InteropCertificates.Padding.NCRYPT_PAD_PKCS1_FLAG));
         }
+        
+        public int Decrypt(IntPtr cipherText, int cipherTextLength, IntPtr plainText, int plainTextLength)
+        {
+            int returnResult;
+            ExceptionHelper.CheckReturnCode(InteropCertificates.NCryptDecrypt(_privateKey, cipherText, cipherTextLength, IntPtr.Zero, plainText, plainTextLength, out returnResult, (uint)InteropCertificates.Padding.NCRYPT_PAD_PKCS1_FLAG));
+            return returnResult;
+        }
     }
 }

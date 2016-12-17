@@ -99,7 +99,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
             var buffDescription = new BCryptBufferDesc();
             var bufferArray = stackalloc BCryptBuffer[4];
             bufferArray[0] = new BCryptBuffer() { BufferType = BufferTypes.KDF_HASH_ALGORITHM, cbBuffer = hashProvider.AlgIdLength, pvBuffer = (void*)hashProvider.AlgId };
-            bufferArray[1] = new BCryptBuffer() { BufferType = BufferTypes.KDF_TLS_PRF_LABEL, cbBuffer = TlsLabels.MasterSecretSize, pvBuffer = (void*)TlsLabels.MasterSecretPointer };
+            bufferArray[1] = new BCryptBuffer() { BufferType = BufferTypes.KDF_TLS_PRF_LABEL, cbBuffer = TlsImplementation.MasterSecretSize, pvBuffer = (void*)TlsImplementation.MasterSecretPointer };
             bufferArray[2] = new BCryptBuffer() { BufferType = BufferTypes.KDF_TLS_PRF_SEED, cbBuffer = tmpSpan.Length, pvBuffer = seed };
             bufferArray[3] = new BCryptBuffer() { BufferType = BufferTypes.KDF_TLS_PRF_PROTOCOL, cbBuffer = 4, pvBuffer = &version };
             buffDescription.cBuffers = 4;

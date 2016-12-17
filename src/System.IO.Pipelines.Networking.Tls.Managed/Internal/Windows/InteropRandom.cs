@@ -16,12 +16,26 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
 
         public static void GetRandom(Memory<byte> spanToFill)
         {
-            void* pointer;
-            if (!spanToFill.TryGetPointer(out pointer))
+            var handle = default(GCHandle);
+            try
             {
-                throw new InvalidOperationException();
+                void* pointer;
+                if (!spanToFill.TryGetPointer(out pointer))
+                {
+                    ArraySegment<byte> array;
+                    spanToFill.TryGetArray(out array);
+                    handle = GCHandle.Alloc(array.Array, GCHandleType.Pinned);
+                    pointer = ((byte*) handle.AddrOfPinnedObject() + array.Offset);
+                }
+                ExceptionHelper.CheckReturnCode(BCryptGenRandom(IntPtr.Zero, pointer, spanToFill.Length, BCRYPT_USE_SYSTEM_PREFERRED_RNG));
             }
-            ExceptionHelper.CheckReturnCode(BCryptGenRandom(IntPtr.Zero, pointer, spanToFill.Length, BCRYPT_USE_SYSTEM_PREFERRED_RNG));
+            finally
+            {
+                if(handle.IsAllocated)
+                {
+                    handle.Free();
+                }
+            }
         }
     }
 }

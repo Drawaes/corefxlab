@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
 {
-    internal unsafe static class TlsLabels
+    internal unsafe partial class TlsImplementation
     {
         private const string MASTER_SECRET = "master secret";
         private const string KEY_EXPANSION = "key expansion";

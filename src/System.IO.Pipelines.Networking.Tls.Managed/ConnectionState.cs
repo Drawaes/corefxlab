@@ -25,6 +25,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
         private bool _clientDataEncrypted;
         private static readonly Task s_cachedTask = Task.FromResult(0);
         private byte[] _masterSecret;
+        //At this stage I only support 1.2
+        private TlsVersion _tlsVersion = TlsVersion.Tls12;
 
         public ConnectionState(ManagedSecurityContext securityContext)
         {
@@ -41,6 +43,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
         internal BulkCipherInstance ClientKey { get; set; }
         internal BulkCipherInstance ServerKey { get; set; }
         internal bool HashshakeComplete => _handshakeComplete;
+        public TlsVersion TlsVersion => _tlsVersion;
 
         public int BlockSize => 1026 * 16 - 1 - 16 - 8;
 
@@ -308,6 +311,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                         return HandleClientHello(readBuffer, writer);
                     case HandshakeMessageType.ClientKeyExchange:
                         _masterSecret = _keyExchange.ProcessClientKeyExchange(readBuffer);
+                        GenerateKeys();
                         return s_cachedTask;
                     case HandshakeMessageType.Finished:
                         return ProcessClientFinished(readBuffer, writer);
@@ -321,6 +325,26 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                 return s_cachedTask;
             }
             throw new NotImplementedException();
+        }
+
+        private unsafe void GenerateKeys()
+        {
+            //We have the master secret we can move on to making our keys!!!
+            var seed = new byte[ClientRandom.Length + ServerRandom.Length + TlsImplementation.KeyExpansionSize];
+            var seedSpan = new Span<byte>(seed);
+            var seedLabel = new Span<byte>((byte*)TlsImplementation.KeyExpansion, TlsImplementation.KeyExpansionSize);
+            seedLabel.CopyTo(seedSpan);
+            seedSpan = seedSpan.Slice(seedLabel.Length);
+
+            var serverRandom = new Span<byte>(ServerRandom);
+            serverRandom.CopyTo(seedSpan);
+            seedSpan = seedSpan.Slice(serverRandom.Length);
+            var clientRandom = new Span<byte>(ClientRandom);
+            clientRandom.CopyTo(seedSpan);
+
+            var keyMaterial = new byte[CipherSuite.KeyMaterialRequired];
+            TlsImplementation.P_Hash12(CipherSuite.Hmac, keyMaterial, _masterSecret, seed);
+            CipherSuite.ProcessKeyMaterial(this, keyMaterial);
         }
 
         public Task ProcessContextMessageAsync(IPipelineWriter writer)

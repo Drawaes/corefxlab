@@ -10,6 +10,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
     {
         private ICertificate _certificate;
         private EcdhExchangeProvider _ecdheProvider;
+        private NoneExchangeProvider _noneProvider;
 
         public KeyExchangeFactory(ICertificate certificate)
         {
@@ -35,7 +36,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
                     }
                     return _ecdheProvider;
                 case KeyExchangeType.None:
-                    return null;
+                    if(_noneProvider == null)
+                    {
+                        _noneProvider = new NoneExchangeProvider(_certificate);
+                    }
+                    return _noneProvider;
                 default:
                     return null;
             }

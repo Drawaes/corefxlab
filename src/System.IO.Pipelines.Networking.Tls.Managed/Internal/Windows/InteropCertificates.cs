@@ -23,6 +23,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
         private extern static bool CryptAcquireCertificatePrivateKey(IntPtr pCert, uint dwFlags, out void* pvParameters, out IntPtr phCryptProvOrNCryptKey, out uint pdwKeySpec, out bool pfCallerFreeProvOrNCryptKey);
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         internal static extern ReturnCodes NCryptSignHash(IntPtr hKey, void* pPaddingInfo, IntPtr pbHashValue, int cbHashValue, IntPtr pbSignature, int cbSignature, out int pcbResult, Padding dwFlags);
+        [DllImport(Dll, ExactSpelling = true, SetLastError =true, CharSet =CharSet.Unicode)]
+        internal static extern ReturnCodes NCryptDecrypt(IntPtr hKey,IntPtr pbInput,int cbInput,IntPtr pPaddingInfo,IntPtr pbOutput, int cbOutput,out int pcbResult,uint dwFlags);
 
         internal static readonly IntPtr s_storageProvider;
 

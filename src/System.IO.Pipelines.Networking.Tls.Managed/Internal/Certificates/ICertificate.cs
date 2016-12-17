@@ -13,5 +13,6 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates
         int SignatureSize { get;}
 
         void SignHash(HashProvider hashId, Memory<byte> outputBuffer, byte* hash, int hashLength);
+        int Decrypt(IntPtr cipherText, int cipherTextLength, IntPtr plainText, int plainTextLength);
     }
 }

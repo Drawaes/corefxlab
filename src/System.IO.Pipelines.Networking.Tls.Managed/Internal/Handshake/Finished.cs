@@ -14,14 +14,14 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             //THIS METHOD is very allocaty for no good reason need to revist the P_Hash function
             //and this method that uses it
             var verifyData = new byte[VERIFY_DATA_LENGTH];
-            var hashResult = new byte[state.HandshakeHash.HashSize + TlsLabels.ClientFinishedSize];
+            var hashResult = new byte[state.HandshakeHash.HashSize + TlsImplementation.ClientFinishedSize];
             fixed (byte* hashPointer = hashResult)
             {
-                state.HandshakeHash.Finish(hashPointer + TlsLabels.ClientFinishedSize, state.HandshakeHash.HashSize, false);
+                state.HandshakeHash.Finish(hashPointer + TlsImplementation.ClientFinishedSize, state.HandshakeHash.HashSize, false);
             }
             //We have our handshake hash now we p_hash it to get down to the size we want but first we copy in the client finished message
-            TlsLabels.GetClientFinishedSpan().CopyTo(new Span<byte>(hashResult));
-            KeyGeneration.PseudoRandomFunctions.P_Hash12(state.CipherSuite.Hmac,verifyData, masterSecret, hashResult);
+            TlsImplementation.GetClientFinishedSpan().CopyTo(new Span<byte>(hashResult));
+            TlsImplementation.P_Hash12(state.CipherSuite.Hmac,verifyData, masterSecret, hashResult);
             //Make sure we include this message in the server finished
             state.HandshakeHash.HashData(buffer);
             //So we have what we think the client finished hmac should be... what is it really?
@@ -56,15 +56,15 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             var frame = new FrameWriter(ref buffer, TlsFrameType.Handshake, state);
             var handshakeFrame = new HandshakeWriter(ref buffer, state, HandshakeMessageType.Finished);
 
-            var hashResult = new byte[state.HandshakeHash.HashSize + TlsLabels.ServerFinishedSize];
+            var hashResult = new byte[state.HandshakeHash.HashSize + TlsImplementation.ServerFinishedSize];
             fixed (byte* hashPtr = hashResult)
             {
-                state.HandshakeHash.Finish(hashPtr + TlsLabels.ServerFinishedSize, state.HandshakeHash.HashSize, true);
+                state.HandshakeHash.Finish(hashPtr + TlsImplementation.ServerFinishedSize, state.HandshakeHash.HashSize, true);
             }
-            TlsLabels.GetServerFinishedSpan().CopyTo(hashResult);
+            TlsImplementation.GetServerFinishedSpan().CopyTo(hashResult);
 
             var verifyData = new byte[VERIFY_DATA_LENGTH];
-            KeyGeneration.PseudoRandomFunctions.P_Hash12(state.CipherSuite.Hmac, verifyData, masterSecret, hashResult);
+            TlsImplementation.P_Hash12(state.CipherSuite.Hmac, verifyData, masterSecret, hashResult);
             buffer.Write(new Span<byte>(verifyData));
 
             handshakeFrame.Finish(ref buffer);
