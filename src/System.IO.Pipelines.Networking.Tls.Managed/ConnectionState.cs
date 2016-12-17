@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed
 {
-    internal class ConnectionState:IDisposable
+    internal class ConnectionState : ISecureContext
     {
         private CipherSuite _currentSuite;
         private bool _handshakeComplete;
@@ -21,15 +21,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
         private ManagedSecurityContext _securityContext;
         private HashInstance _handshakeHash;
         private IKeyExchangeInstance _keyExchange;
-        private SecureManagedPipeline _managedPipeline;
         private bool _serverDataEncrypted;
         private bool _clientDataEncrypted;
         private static readonly Task s_cachedTask = Task.FromResult(0);
         private byte[] _masterSecret;
 
-        public ConnectionState(ManagedSecurityContext securityContext, SecureManagedPipeline managedPipeline)
+        public ConnectionState(ManagedSecurityContext securityContext)
         {
-            _managedPipeline = managedPipeline;
             _securityContext = securityContext;
         }
 
@@ -39,13 +37,24 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
         public byte[] ServerRandom => _serverRandom;
         public byte[] ClientRandom => _clientRandom;
         public CipherSuite CipherSuite => _currentSuite;
-        public SecureManagedPipeline Pipe => _managedPipeline;
         public ICertificate Certificate => _securityContext.Certificate;
         internal BulkCipherInstance ClientKey { get; set; }
         internal BulkCipherInstance ServerKey { get; set; }
         internal bool HashshakeComplete => _handshakeComplete;
 
-        public int MaxPlainText => 1026 * 16 - 1 - 16 - 8;
+        public int BlockSize => 1026 * 16 - 1 - 16 - 8;
+
+        public int TrailerSize { get; set; }
+
+        public int HeaderSize { get; set; }
+
+        public bool ReadyToSend => _handshakeComplete;
+
+        public ApplicationLayerProtocolIds NegotiatedProtocol => ApplicationLayerProtocolIds.None;
+
+        public bool IsServer => true;
+
+        public CipherInfo CipherInfo => new CipherInfo() { KeySizeInBits = CipherSuite.BulkCipher.KeySizeInBytes * 8, Name = CipherSuite.CipherString };
 
         public void CheckForValidFrameType(TlsFrameType frameType)
         {
@@ -89,69 +98,26 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
             buffer = buffer.Slice(5);
         }
 
-        internal Task ProcessHandshakeAsync(ReadableBuffer messageBuffer, IPipelineWriter output)
-        {
-            var handshakeType = messageBuffer.ReadBigEndian<HandshakeMessageType>();
-
-            switch (handshakeType)
-            {
-                case HandshakeMessageType.ClientHello:
-                    return HandleClientHello(messageBuffer, output);
-                case HandshakeMessageType.ClientKeyExchange:
-                    _masterSecret = _keyExchange.ProcessClientKeyExchange(messageBuffer);
-                    return s_cachedTask;
-                case HandshakeMessageType.Finished:
-                    return ProcessClientFinished(messageBuffer, output);
-                default:
-                    throw new NotImplementedException();
-            }
-        }
-
-        private async Task ProcessClientFinished(ReadableBuffer messageBuffer, IPipelineWriter output)
+        private Task ProcessClientFinished(ReadableBuffer messageBuffer, IPipelineWriter output)
         {
             Finished.ProcessClient(messageBuffer, this, _masterSecret);
             var writeBuffer = output.Alloc();
             ChangeCipherSpec.Write(ref writeBuffer, this);
             _serverDataEncrypted = true;
-            await writeBuffer.FlushAsync();
-            writeBuffer = output.Alloc();
             Finished.WriteServer(ref writeBuffer, this, _masterSecret);
             _handshakeComplete = true;
-            await writeBuffer.FlushAsync();
+            return writeBuffer.FlushAsync();
         }
 
-        internal Task EncryptApplicationFrame(ReadableBuffer messageBuffer, IPipelineWriter output)
-        {
-            var buffer = output.Alloc();
-            buffer.Ensure(5);
-            buffer.WriteBigEndian(TlsFrameType.AppData);
-            buffer.WriteBigEndian<ushort>(0x0303);
-            var bookmark = buffer.Memory;
-            buffer.Advance(2);
-            var amountWritten = buffer.BytesWritten;
-
-            ServerKey.Encrypt(ref buffer, messageBuffer, TlsFrameType.AppData);
-
-            var recordSize = buffer.BytesWritten - amountWritten;
-            bookmark.Span.Write((ushort)((recordSize >> 8) | (recordSize << 8)));
-            return buffer.FlushAsync();
-        }
-        
-        private async Task HandleClientHello(ReadableBuffer messageBuffer, IPipelineWriter output)
+        private Task HandleClientHello(ReadableBuffer messageBuffer, IPipelineWriter output)
         {
             ProcessClientHello(messageBuffer);
             var writeBuffer = output.Alloc();
             ServerHello.Write(ref writeBuffer, this);
-            await writeBuffer.FlushAsync();
-            writeBuffer = output.Alloc();
             ServerCertificate.Write(ref writeBuffer, this);
-            await writeBuffer.FlushAsync();
-            writeBuffer = output.Alloc();
             _keyExchange.WriteServerKeyExchange(ref writeBuffer);
-            await writeBuffer.FlushAsync();
-            writeBuffer = output.Alloc();
             ServerHelloDone.Write(ref writeBuffer, this);
-            await writeBuffer.FlushAsync();
+            return writeBuffer.FlushAsync();
         }
 
         private void ProcessClientHello(ReadableBuffer buffer)
@@ -271,7 +237,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                 {
                     if ((_securityContext.AlpnSupportedProtocols & protoId) > 0)
                     {
-                        _managedPipeline.NegotiatedProtocol = protoId;
+                        //_managedPipeline.NegotiatedProtocol = protoId;
                         break;
                     }
                 }
@@ -323,6 +289,68 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
             ServerKey.Dispose();
             ClientKey.Dispose();
             GC.SuppressFinalize(this);
+        }
+
+        public Task ProcessContextMessageAsync(ReadableBuffer readBuffer, IPipelineWriter writer)
+        {
+            var frameType = readBuffer.ReadBigEndian<TlsFrameType>();
+            CheckForValidFrameType(frameType);
+            DecryptRecord(ref readBuffer);
+
+            if (frameType == TlsFrameType.Handshake)
+            {
+
+                var handshakeType = readBuffer.ReadBigEndian<HandshakeMessageType>();
+
+                switch (handshakeType)
+                {
+                    case HandshakeMessageType.ClientHello:
+                        return HandleClientHello(readBuffer, writer);
+                    case HandshakeMessageType.ClientKeyExchange:
+                        _masterSecret = _keyExchange.ProcessClientKeyExchange(readBuffer);
+                        return s_cachedTask;
+                    case HandshakeMessageType.Finished:
+                        return ProcessClientFinished(readBuffer, writer);
+                    default:
+                        throw new NotImplementedException();
+                }
+            }
+            else if (frameType == TlsFrameType.ChangeCipherSpec)
+            {
+                ClientDataEncrypted = true;
+                return s_cachedTask;
+            }
+            throw new NotImplementedException();
+        }
+
+        public Task ProcessContextMessageAsync(IPipelineWriter writer)
+        {
+            return s_cachedTask;
+        }
+
+        public Task DecryptAsync(ReadableBuffer encryptedData, IPipelineWriter decryptedPipeline)
+        {
+            DecryptRecord(ref encryptedData);
+            var buffer = decryptedPipeline.Alloc();
+            buffer.Append(encryptedData);
+            return buffer.FlushAsync();
+        }
+
+        public Task EncryptAsync(ReadableBuffer unencryptedData, IPipelineWriter encryptedPipeline)
+        {
+            var buffer = encryptedPipeline.Alloc();
+            buffer.Ensure(5);
+            buffer.WriteBigEndian(TlsFrameType.AppData);
+            buffer.WriteBigEndian<ushort>(0x0303);
+            var bookmark = buffer.Memory;
+            buffer.Advance(2);
+            var amountWritten = buffer.BytesWritten;
+
+            ServerKey.Encrypt(ref buffer, unencryptedData, TlsFrameType.AppData);
+
+            var recordSize = buffer.BytesWritten - amountWritten;
+            bookmark.Span.Write((ushort)((recordSize >> 8) | (recordSize << 8)));
+            return buffer.FlushAsync();
         }
 
         ~ConnectionState()

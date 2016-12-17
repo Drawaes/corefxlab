@@ -37,10 +37,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
         internal ICertificate Certificate => _certificate;
         internal CipherList CipherList => _cipherList;
         public ApplicationLayerProtocolIds AlpnSupportedProtocols { get; internal set; }
-        
-        public SecureManagedPipeline CreateSecurePipeline(IPipelineConnection pipeline)
+
+        public ISecurePipeline CreateSecurePipeline(IPipelineConnection pipeline)
         {
-            return new SecureManagedPipeline(pipeline, _factory, this);
+            var chan = new SecurePipeline<ConnectionState>(pipeline, _factory, new ConnectionState(this));
+            return chan;
         }
 
         public void Dispose()

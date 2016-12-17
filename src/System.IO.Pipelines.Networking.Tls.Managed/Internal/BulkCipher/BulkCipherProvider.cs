@@ -73,7 +73,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCipher
 
         public unsafe BulkCipherInstance GetCipherKey(byte* key, int keyLength)
         {
-            var returnKey = new BulkCipherInstance(_providerHandle, _pool.Rent(_bufferSizeNeededForState), key, keyLength);
+            var returnKey = new BulkCipherInstance(_providerHandle, _pool,_bufferSizeNeededForState, key, keyLength);
             return returnKey;
         }
 

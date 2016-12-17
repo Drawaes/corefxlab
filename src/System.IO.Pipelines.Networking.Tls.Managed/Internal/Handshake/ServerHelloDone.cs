@@ -12,7 +12,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             var frame = new FrameWriter(ref buffer, TlsFrameType.Handshake, state);
             var handshakeFrame = new HandshakeWriter(ref buffer, state, HandshakeMessageType.ServerHelloDone);
 
-            handshakeFrame.Finish(buffer);
+            handshakeFrame.Finish(ref buffer);
             frame.Finish(ref buffer);
         }
     }

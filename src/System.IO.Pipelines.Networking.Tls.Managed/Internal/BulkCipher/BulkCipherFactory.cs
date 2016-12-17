@@ -42,7 +42,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCipher
             return null;
         }
 
-        public void Init()
+        public void Init(int bufferPoolSize)
         {
             int max = 0;
             for (int i = 0; i < _providers.Length; i++)
@@ -52,7 +52,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCipher
                     max = _providers[i].BufferSizeNeededForState;
                 }
             }
-            _pool = new NativeBufferPool(max, 100);
+            _pool = new NativeBufferPool(max, bufferPoolSize);
             for (int i = 0; i < _providers.Length; i++)
             {
                 if (_providers[i] != null)

@@ -18,15 +18,24 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCipher
         private int _blockLength;
         private byte[] _nounceBuffer;
         private ulong _sequenceNumber;
+        NativeBufferPool _pool;
 
-        public unsafe BulkCipherInstance(IntPtr provider, OwnedMemory<byte> buffer, byte* keyPointer, int keyLength)
+        public unsafe BulkCipherInstance(IntPtr provider, NativeBufferPool pool,int bufferSizeNeeded, byte* keyPointer, int keyLength)
         {
+            _pool = pool;
             try
             {
-                _buffer = buffer;
-                _handle = InteropBulkEncryption.ImportKey(provider, buffer.Memory, keyPointer, keyLength);
-                _blockLength = InteropProperties.GetBlockLength(_handle);
-                _maxTagLength = InteropProperties.GetMaxAuthTagLength(_handle);
+                _buffer = pool.Rent(bufferSizeNeeded);
+                try
+                {
+                    _handle = InteropBulkEncryption.ImportKey(provider, _buffer.Memory, keyPointer, keyLength);
+                    _blockLength = InteropProperties.GetBlockLength(_handle);
+                    _maxTagLength = InteropProperties.GetMaxAuthTagLength(_handle);
+                }
+                catch
+                {
+                    _pool.Return(_buffer);
+                }
             }
             catch
             {
@@ -142,8 +151,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCipher
                     {
                         throw new NotImplementedException("Need to implement a pinned array if we can get a pointer");
                     }
+                    void* inPointer;
+                    if(!b.TryGetPointer(out inPointer))
+                    {
+                        throw new NotImplementedException("Need to implement a pinned array if we can't get a pointer");
+                    }
                     int amountWritten;
-                    ExceptionHelper.CheckReturnCode(InteropBulkEncryption.BCryptEncrypt(_handle, outPointer, b.Length, &cInfo, iv, (uint)_blockLength, outPointer, b.Length, out amountWritten, 0));
+                    ExceptionHelper.CheckReturnCode(InteropBulkEncryption.BCryptEncrypt(_handle, inPointer, b.Length, &cInfo, iv, (uint)_blockLength, outPointer,buffer.Memory.Length, out amountWritten, 0));
                     buffer.Advance(amountWritten);
                     cInfo.dwFlags = AuthenticatedCipherModeInfoFlags.InProgress;
                     if (totalDataLength == 0)
@@ -224,7 +238,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCipher
             }
             if (_buffer != null)
             {
-                _buffer.Release();
+                _pool.Return(_buffer);
                 _buffer = null;
             }
             GC.SuppressFinalize(this);

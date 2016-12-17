@@ -21,12 +21,12 @@ namespace System.IO.Pipelines.Tests
         private static readonly string _shortTestString = "The quick brown fox jumped over the lazy dog.";
 
         [Fact]
-        public Task PipelineAllTheThings()
+        public async Task PipelineAllTheThings()
         {
             using (var cert = new X509Certificate2(_certificatePath, _certificatePassword))
             using (var factory = new PipelineFactory())
             using (var serverContext = new ManagedSecurityContext(factory, cert))
-            using (var socketClient = new Networking.Sockets.SocketListener(factory))
+            //using (var socketClient = new Networking.Sockets.SocketListener(factory))
             using (var clientContext = new SecurityContext(factory, "test", false, null))
             {
                 //var ipEndPoint = new IPEndPoint(IPAddress.Parse("192.168.1.70"), 443);
@@ -35,43 +35,36 @@ namespace System.IO.Pipelines.Tests
                 //Console.ReadLine();
                 //return Task.FromResult(0);
 
-                return NoNetwork(factory, serverContext, clientContext);
-            }
-        }
-
-        private async Task NoNetwork(PipelineFactory factory, ManagedSecurityContext serverContext, SecurityContext clientContext)
-        {
-            var loopback = new LoopbackPipeline(factory);
-            using (var server = serverContext.CreateSecurePipeline(loopback.ServerPipeline))
-            using (var client = clientContext.CreateSecurePipeline(loopback.ClientPipeline))
-            {
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-                Echo(server);
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-                var outputBuffer = client.Output.Alloc(_shortTestString.Length);
-                outputBuffer.Write(Encoding.UTF8.GetBytes(_shortTestString));
-                await outputBuffer.FlushAsync();
-
-                //Now check we get the same thing back
-                string resultString;
-                while (true)
+                var loopback = new LoopbackPipeline(factory);
+                using (var server = serverContext.CreateSecurePipeline(loopback.ServerPipeline))
+                using (var client = clientContext.CreateSecurePipeline(loopback.ClientPipeline))
                 {
-                    var result = await client.Input.ReadAsync();
-                    if (result.Buffer.Length >= _shortTestString.Length)
-                    {
-                        resultString = result.Buffer.GetUtf8String();
-                        client.Input.Advance(result.Buffer.End);
-                        break;
-                    }
-                    client.Input.Advance(result.Buffer.Start, result.Buffer.End);
-                }
-                Assert.Equal(_shortTestString, resultString);
-            }
-            loopback.ClientPipeline.Dispose();
-            loopback.ServerPipeline.Dispose();
-        }
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                    Echo(server);
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                    var outputBuffer = client.Output.Alloc(_shortTestString.Length);
+                    outputBuffer.Write(Encoding.UTF8.GetBytes(_shortTestString));
+                    await outputBuffer.FlushAsync();
 
-        private async Task Echo(SecureManagedPipeline pipeline)
+                    //Now check we get the same thing back
+                    string resultString;
+                    while (true)
+                    {
+                        var result = await client.Input.ReadAsync();
+                        if (result.Buffer.Length >= _shortTestString.Length)
+                        {
+                            resultString = result.Buffer.GetUtf8String();
+                            client.Input.Advance(result.Buffer.End);
+                            break;
+                        }
+                        client.Input.Advance(result.Buffer.Start, result.Buffer.End);
+                    }
+                    Assert.Equal(_shortTestString, resultString);
+                }
+            }
+        }
+        
+        private async Task Echo(ISecurePipeline pipeline)
         {
             await pipeline.PerformHandshakeAsync();
             try

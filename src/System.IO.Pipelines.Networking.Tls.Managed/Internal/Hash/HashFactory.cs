@@ -11,7 +11,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
         private readonly HashProvider[] _hashProviders;
         private readonly HashProvider[] _hmacProviders;
         private NativeBufferPool _pool;
-
+        
         public HashFactory()
         {
             var arraySize = ((byte[])Enum.GetValues(typeof(HashType))).Max() + 1;
@@ -98,7 +98,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
             return null;
         }
 
-        public void Init()
+        public void Init(int bufferPoolSize)
         {
             int max = 0;
             for (int i = 0; i < _hmacProviders.Length; i++)
@@ -112,7 +112,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
                     max = _hmacProviders[i].BufferSizeNeededForState;
                 }
             }
-            _pool = new NativeBufferPool(max, 100);
+            _pool = new NativeBufferPool(max, bufferPoolSize);
             for (int i = 0; i < _hmacProviders.Length; i++)
             {
                 if (_hashProviders[i] != null)

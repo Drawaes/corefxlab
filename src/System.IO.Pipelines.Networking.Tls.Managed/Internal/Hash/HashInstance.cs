@@ -29,7 +29,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
             }
             catch
             {
-                _buffer.Release();
+                pool.Return(_buffer);
+                _buffer = null;
                 throw;
             }
         }
@@ -97,7 +98,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
                 }
                 finally
                 {
-                    tmpBuffer.Release();
+                    _pool.Return(tmpBuffer);
                 }
             }
             else
@@ -105,6 +106,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
                 InteropHash.FinishHash(_hashHandle, output, length);
                 Dispose();
             }
+        }
+
+        ~HashInstance()
+        {
+            Dispose();
         }
         
         public void Dispose()
@@ -123,9 +129,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
             }
             if (_buffer != null)
             {
-                _buffer.Release();
+                _pool.Return(_buffer);
                 _buffer = null;
             }
+            GC.SuppressFinalize(this);
         }
     }
 }

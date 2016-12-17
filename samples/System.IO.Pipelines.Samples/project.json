@@ -2,7 +2,8 @@
   "version": "1.0.0-*",
   "buildOptions": {
     "allowUnsafe": true,
-    "emitEntryPoint": true
+    "emitEntryPoint": true,
+    "copyToOutput": "../../data/TestCert.pfx"
   },
 
   "dependencies": {
@@ -24,6 +25,8 @@
     "System.IO.Pipelines.Compression": {
       "target": "project"
     },
+    "System.IO.Pipelines.Networking.Tls.Managed": { "target": "project" }, 
+    "System.IO.Pipelines.Networking.Tls": {"target": "project"},
     "Newtonsoft.Json": "9.0.1",
     "Microsoft.AspNetCore.Server.Kestrel": "1.0.0",
     "Microsoft.NETCore.App": {

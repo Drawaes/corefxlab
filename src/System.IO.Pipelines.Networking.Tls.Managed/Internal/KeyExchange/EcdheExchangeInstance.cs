@@ -59,7 +59,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
 
         public unsafe void WriteServerKeyExchange(ref WritableBuffer buffer)
         {
-            var fw = new FrameWriter(ref buffer, TlsFrameType.Handshake, _state);
+            var frame = new FrameWriter(ref buffer, TlsFrameType.Handshake, _state);
             var hw = new HandshakeWriter(ref buffer, _state, HandshakeMessageType.ServerKeyExchange);
 
             GenerateEphemeralKey();
@@ -89,8 +89,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
             _certificate.SignHash(_state.CipherSuite.Hash, buffer.Memory.Slice(0,_certificate.SignatureSize), hashResult, hash.HashSize);
             buffer.Advance(_certificate.SignatureSize);
 
-            hw.Finish(buffer);
-            fw.Finish(ref buffer);
+            hw.Finish(ref buffer);
+            frame.Finish(ref buffer);
         }
 
         public unsafe byte[] ProcessClientKeyExchange(ReadableBuffer buffer)

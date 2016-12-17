@@ -2,7 +2,7 @@
 
 namespace System.IO.Pipelines.Networking.Tls
 {
-    internal interface ISecureContext : IDisposable
+    public interface ISecureContext : IDisposable
     {
         int TrailerSize { get; set; }
         int HeaderSize { get; set; }
@@ -14,5 +14,6 @@ namespace System.IO.Pipelines.Networking.Tls
         Task EncryptAsync(ReadableBuffer unencryptedData, IPipelineWriter encryptedPipeline);
         bool IsServer { get; }
         CipherInfo CipherInfo { get; }
+        int BlockSize { get; }
     }
 }

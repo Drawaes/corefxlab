@@ -2,7 +2,7 @@
 
 namespace System.IO.Pipelines.Networking.Tls
 {
-    internal class SecurePipeline<T> : ISecurePipeline where T : ISecureContext
+    public class SecurePipeline<T> : ISecurePipeline where T : ISecureContext
     {
         private readonly IPipelineConnection _lowerConnection;
         private readonly Pipe _outputPipeline;
@@ -10,7 +10,7 @@ namespace System.IO.Pipelines.Networking.Tls
         private readonly T _contextToDispose;
         private TaskCompletionSource<ApplicationLayerProtocolIds> _handShakeCompleted;
 
-        internal SecurePipeline(IPipelineConnection inConnection, PipelineFactory pipelineFactory, T secureContext)
+        public SecurePipeline(IPipelineConnection inConnection, PipelineFactory pipelineFactory, T secureContext)
         {
             _contextToDispose = secureContext;
             _lowerConnection = inConnection;
@@ -145,7 +145,7 @@ namespace System.IO.Pipelines.Networking.Tls
         private async void StartWriting()
         {
             await PerformHandshakeAsync();
-            var maxBlockSize = (SecurityContext.BlockSize - _contextToDispose.HeaderSize - _contextToDispose.TrailerSize);
+            var maxBlockSize = (_contextToDispose.BlockSize - _contextToDispose.HeaderSize - _contextToDispose.TrailerSize);
             try
             {
                 while (true)

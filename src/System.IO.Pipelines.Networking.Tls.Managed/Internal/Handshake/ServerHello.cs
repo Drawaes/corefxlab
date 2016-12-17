@@ -35,7 +35,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             var extensionLength = buffer.Memory.Slice(0, 2);
             var length = buffer.BytesWritten + 2;
             bool needToAdvance = true;
-            needToAdvance = WriteAlpnExtension(needToAdvance, ref buffer, state.Pipe);
+            needToAdvance = WriteAlpnExtension(needToAdvance, ref buffer, ApplicationLayerProtocolIds.None);
             if (needToAdvance == false)
             {
                 //we wrote extenstions
@@ -43,20 +43,20 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
                 extensionLength.Span.Write16BitNumber((ushort)length);
             }
 
-            handshakeFrame.Finish(buffer);
+            handshakeFrame.Finish(ref buffer);
             frame.Finish(ref buffer);
         }
 
-        private static bool WriteAlpnExtension(bool needToAdvance, ref WritableBuffer buffer, SecureManagedPipeline pipe)
+        private static bool WriteAlpnExtension(bool needToAdvance, ref WritableBuffer buffer, ApplicationLayerProtocolIds protocolId)
         {
-            if (pipe.NegotiatedProtocol != ApplicationLayerProtocolIds.None)
+            if (protocolId != ApplicationLayerProtocolIds.None)
             {
                 if (needToAdvance)
                 {
                     buffer.Advance(2);
                 }
                 buffer.WriteBigEndian((ushort)ExtensionType.Application_layer_protocol_negotiation);
-                var protoBytes = ApplicationLayerProtocolExtension.AllProtocols[(int)Math.Log((int)pipe.NegotiatedProtocol, 2)];
+                var protoBytes = ApplicationLayerProtocolExtension.AllProtocols[(int)Math.Log((int)protocolId, 2)];
                 buffer.WriteBigEndian((ushort)(protoBytes.Length + 3));
                 buffer.WriteBigEndian((ushort)(protoBytes.Length + 1));
                 buffer.WriteBigEndian((byte)protoBytes.Length);

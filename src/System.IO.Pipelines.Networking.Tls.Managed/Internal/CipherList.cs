@@ -16,6 +16,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
         private readonly HashFactory _hmacFactory = new HashFactory();
         private readonly BulkCipherFactory _bulkCipherFactory = new BulkCipherFactory();
         private readonly KeyExchangeFactory _keyExchangeFactory;
+        private int _bufferPoolSize = 500;
 
         internal CipherList(ICertificate certificate)
         {
@@ -126,8 +127,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
                 }
             }
 
-            _hmacFactory.Init();
-            _bulkCipherFactory.Init();
+            _hmacFactory.Init(_bufferPoolSize);
+            _bulkCipherFactory.Init(_bufferPoolSize);
         }
 
         internal CipherSuite GetCipherInfo(ushort cipherKey)

@@ -21,6 +21,7 @@ namespace System.IO.Pipelines.Networking.Tls
 
         public bool ReadyToSend => _readyToSend;
         public ApplicationLayerProtocolIds NegotiatedProtocol => _negotiatedProtocol;
+        public int BlockSize => SecurityContext.BlockSize;
 
         public int HeaderSize
         {

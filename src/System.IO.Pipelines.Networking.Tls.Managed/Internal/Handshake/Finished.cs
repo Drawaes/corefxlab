@@ -67,7 +67,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             KeyGeneration.PseudoRandomFunctions.P_Hash12(state.CipherSuite.Hmac, verifyData, masterSecret, hashResult);
             buffer.Write(new Span<byte>(verifyData));
 
-            handshakeFrame.Finish(buffer);
+            handshakeFrame.Finish(ref buffer);
             frame.Finish(ref buffer);
         }
     }
