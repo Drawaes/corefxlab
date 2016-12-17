@@ -16,7 +16,9 @@
     "System.Text.Primitives": { "target": "project" },
     "System.Text.Formatting": { "target": "project" },
     "System.Text.Http": { "target": "project" },
-    "System.Text.Json": { "target": "project" }
+    "System.Text.Json": { "target": "project" },
+    "System.IO.Pipelines.Networking.Tls.Managed": { "target": "project" },
+    "System.IO.Pipelines.Networking.Tls": {"target": "project"}  
   },
   "frameworks": {
     "netcoreapp1.0": {

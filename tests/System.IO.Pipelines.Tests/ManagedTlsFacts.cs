@@ -27,19 +27,19 @@ namespace System.IO.Pipelines.Tests
             using (var factory = new PipelineFactory())
             using (var serverContext = new ManagedSecurityContext(factory, cert))
             using (var socketClient = new Networking.Sockets.SocketListener(factory))
-            using (var clientContext = new OpenSslSecurityContext(factory, "test", false, null, null))
+            using (var clientContext = new SecurityContext(factory, "test", false, null))
             {
-                var ipEndPoint = new IPEndPoint(IPAddress.Loopback, 443);
-                socketClient.OnConnection(s => serverContext.CreateSecurePipeline(s).PerformHandshakeAsync());
-                socketClient.Start(ipEndPoint);
-                Console.ReadLine();
-                return Task.FromResult(0);
+                //var ipEndPoint = new IPEndPoint(IPAddress.Parse("192.168.1.70"), 443);
+                //socketClient.OnConnection(s => serverContext.CreateSecurePipeline(s).PerformHandshakeAsync());
+                //socketClient.Start(ipEndPoint);
+                //Console.ReadLine();
+                //return Task.FromResult(0);
 
-                //return NoNetwork(factory, serverContext, clientContext);
+                return NoNetwork(factory, serverContext, clientContext);
             }
         }
 
-        private async Task NoNetwork(PipelineFactory factory, ManagedSecurityContext serverContext, OpenSslSecurityContext clientContext)
+        private async Task NoNetwork(PipelineFactory factory, ManagedSecurityContext serverContext, SecurityContext clientContext)
         {
             var loopback = new LoopbackPipeline(factory);
             using (var server = serverContext.CreateSecurePipeline(loopback.ServerPipeline))
@@ -48,9 +48,9 @@ namespace System.IO.Pipelines.Tests
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
                 Echo(server);
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-                var outputBuffer = client.Output.Alloc();
+                var outputBuffer = client.Output.Alloc(_shortTestString.Length);
                 outputBuffer.Write(Encoding.UTF8.GetBytes(_shortTestString));
-                outputBuffer.FlushAsync().Wait();
+                await outputBuffer.FlushAsync();
 
                 //Now check we get the same thing back
                 string resultString;
@@ -67,6 +67,8 @@ namespace System.IO.Pipelines.Tests
                 }
                 Assert.Equal(_shortTestString, resultString);
             }
+            loopback.ClientPipeline.Dispose();
+            loopback.ServerPipeline.Dispose();
         }
 
         private async Task Echo(SecureManagedPipeline pipeline)

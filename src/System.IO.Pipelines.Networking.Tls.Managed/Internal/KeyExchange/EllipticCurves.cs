@@ -7,7 +7,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
 {
     internal enum EllipticCurves
     {
-        //https://tools.ietf.org/search/rfc4492#section-5.1.1
+        //http://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml
+        Unassigned = 0,
         sect163k1 = 1,
         sect163r1 = 2,
         sect163r2 = 3,
@@ -33,7 +34,15 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
         secp256r1 = 23,
         secp384r1 = 24,
         secp521r1 = 25,
-        arbitrary_explicit_prime_curves = 0xFF01,
-        arbitrary_explicit_char2_curves = 0xFF02,
+        brainpoolP256r1 = 26,
+        brainpoolP384r1 = 27,
+        brainpoolP512r1 = 28,
+        ffdhe2048 = 256,
+        ffdhe3072 = 257,
+        ffdhe4096 = 258,
+        ffdhe6144 = 259,
+        ffdhe8192 = 260,
+        arbitrary_explicit_prime_curves = 65281,
+        arbitrary_explicit_char2_curves = 65282,
     }
 }

@@ -42,5 +42,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
                 BCryptImportKey(provider, IntPtr.Zero, "KeyDataBlob", out handle, (IntPtr)memPtr, objectBuffer.Length,(IntPtr) keyBlob, s_sizeOfKeyHeader + keyLength, 0));
             return handle;
         }
+
+        internal static void DestroyKey(IntPtr handle)
+        {
+            InteropSecrets.DestroyKey(handle);
+        }
     }
 }

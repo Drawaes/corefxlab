@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed
 {
-    internal class ConnectionState
+    internal class ConnectionState:IDisposable
     {
         private CipherSuite _currentSuite;
         private bool _handshakeComplete;
@@ -34,7 +34,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
         }
 
         public bool ServerDataEncrypted => _serverDataEncrypted;
-        public bool ClientDataEncrypted { internal set { _clientDataEncrypted = value;} get { return _clientDataEncrypted;} }
+        public bool ClientDataEncrypted { internal set { _clientDataEncrypted = value; } get { return _clientDataEncrypted; } }
         public HashInstance HandshakeHash => _handshakeHash;
         public byte[] ServerRandom => _serverRandom;
         public byte[] ClientRandom => _clientRandom;
@@ -43,6 +43,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
         public ICertificate Certificate => _securityContext.Certificate;
         internal BulkCipherInstance ClientKey { get; set; }
         internal BulkCipherInstance ServerKey { get; set; }
+        internal bool HashshakeComplete => _handshakeComplete;
+
+        public int MaxPlainText => 1026 * 16 - 1 - 16 - 8;
 
         public void CheckForValidFrameType(TlsFrameType frameType)
         {
@@ -64,9 +67,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                     }
                     break;
                 case TlsFrameType.ChangeCipherSpec:
-                    if(ClientKey == null || ServerKey == null)
+                    if (ClientKey == null || ServerKey == null)
                     {
-                       throw new InvalidOperationException("Tried to change cipher spec when bulk keys were not setup");
+                        throw new InvalidOperationException("Tried to change cipher spec when bulk keys were not setup");
                     }
                     break;
                 case TlsFrameType.Alert:
@@ -98,35 +101,57 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                     _masterSecret = _keyExchange.ProcessClientKeyExchange(messageBuffer);
                     return s_cachedTask;
                 case HandshakeMessageType.Finished:
-                    Finished.ProcessClient(messageBuffer, this, _masterSecret);
-                    var writeBuffer = output.Alloc();
-                    ChangeCipherSpec.Write(ref writeBuffer, this);
-                    _serverDataEncrypted = true;
-                    writeBuffer.Commit();
-                    writeBuffer = output.Alloc();
-                    Finished.WriteServer(ref writeBuffer, this, _masterSecret);
-                    return writeBuffer.FlushAsync();
+                    return ProcessClientFinished(messageBuffer, output);
                 default:
                     throw new NotImplementedException();
             }
-            throw new NotImplementedException();
         }
 
-        private Task HandleClientHello(ReadableBuffer messageBuffer, IPipelineWriter output)
+        private async Task ProcessClientFinished(ReadableBuffer messageBuffer, IPipelineWriter output)
+        {
+            Finished.ProcessClient(messageBuffer, this, _masterSecret);
+            var writeBuffer = output.Alloc();
+            ChangeCipherSpec.Write(ref writeBuffer, this);
+            _serverDataEncrypted = true;
+            await writeBuffer.FlushAsync();
+            writeBuffer = output.Alloc();
+            Finished.WriteServer(ref writeBuffer, this, _masterSecret);
+            _handshakeComplete = true;
+            await writeBuffer.FlushAsync();
+        }
+
+        internal Task EncryptApplicationFrame(ReadableBuffer messageBuffer, IPipelineWriter output)
+        {
+            var buffer = output.Alloc();
+            buffer.Ensure(5);
+            buffer.WriteBigEndian(TlsFrameType.AppData);
+            buffer.WriteBigEndian<ushort>(0x0303);
+            var bookmark = buffer.Memory;
+            buffer.Advance(2);
+            var amountWritten = buffer.BytesWritten;
+
+            ServerKey.Encrypt(ref buffer, messageBuffer, TlsFrameType.AppData);
+
+            var recordSize = buffer.BytesWritten - amountWritten;
+            bookmark.Span.Write((ushort)((recordSize >> 8) | (recordSize << 8)));
+            return buffer.FlushAsync();
+        }
+        
+        private async Task HandleClientHello(ReadableBuffer messageBuffer, IPipelineWriter output)
         {
             ProcessClientHello(messageBuffer);
             var writeBuffer = output.Alloc();
             ServerHello.Write(ref writeBuffer, this);
-            writeBuffer.Commit();
+            await writeBuffer.FlushAsync();
             writeBuffer = output.Alloc();
             ServerCertificate.Write(ref writeBuffer, this);
-            writeBuffer.Commit();
+            await writeBuffer.FlushAsync();
             writeBuffer = output.Alloc();
             _keyExchange.WriteServerKeyExchange(ref writeBuffer);
-            writeBuffer.Commit();
+            await writeBuffer.FlushAsync();
             writeBuffer = output.Alloc();
             ServerHelloDone.Write(ref writeBuffer, this);
-            return writeBuffer.FlushAsync();
+            await writeBuffer.FlushAsync();
         }
 
         private void ProcessClientHello(ReadableBuffer buffer)
@@ -267,6 +292,42 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                 buffer = buffer.Slice(2);
             }
             return null;
+        }
+
+        public void Dispose()
+        {
+            if (_clientRandom != null)
+            {
+                for (int i = 0; i < _clientRandom.Length; i++)
+                {
+                    _clientRandom[i] = 0;
+                    if (_serverRandom != null)
+                    {
+                        _serverRandom[i] = 0;
+                    }
+                }
+            }
+            _currentSuite = null;
+            _handshakeComplete = false;
+            _handshakeHash?.Dispose();
+            _handshakeHash = null;
+            _keyExchange?.Dispose();
+            _keyExchange = null;
+            if (_masterSecret != null)
+            {
+                for (int i = 0; i < _masterSecret.Length; i++)
+                {
+                    _masterSecret[i] = 0;
+                }
+            }
+            ServerKey.Dispose();
+            ClientKey.Dispose();
+            GC.SuppressFinalize(this);
+        }
+
+        ~ConnectionState()
+        {
+            Dispose();
         }
     }
 }

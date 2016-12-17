@@ -59,8 +59,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
                         provPtr = InteropProviders.OpenSecretProvider(s_providerName);
                         InteropProperties.SetEccCurveName(provPtr, curveName);
                         _providers[value.ToString()] = provPtr;
-                        return provPtr;
                     }
+                    return provPtr;
                 }
                 return IntPtr.Zero;
             }

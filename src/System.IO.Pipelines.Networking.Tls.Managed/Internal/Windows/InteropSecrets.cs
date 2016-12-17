@@ -31,7 +31,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
         [DllImport(Dll, ExactSpelling = true, SetLastError = true, CharSet = CharSet.Unicode)]
         private static extern ReturnCodes BCryptDestroyKey(IntPtr hKey);
 
-        public static void DestroyPublicKey(IntPtr key)
+        public static void DestroyKey(IntPtr key)
         {
             ExceptionHelper.CheckReturnCode(BCryptDestroyKey(key));
         }

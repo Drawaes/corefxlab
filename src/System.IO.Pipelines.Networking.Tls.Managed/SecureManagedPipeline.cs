@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Alerts;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -7,12 +8,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
 {
     public class SecureManagedPipeline : IPipelineConnection
     {
-        private readonly IPipelineConnection _lowerConnection;
+        private IPipelineConnection _lowerConnection;
         private readonly Pipe _outputPipeline;
         private readonly Pipe _inputPipeline;
         private TaskCompletionSource<ApplicationLayerProtocolIds> _handShakeCompleted = new TaskCompletionSource<ApplicationLayerProtocolIds>();
         private readonly ManagedSecurityContext _securityContext;
         private ConnectionState _connectionState;
+        private bool _disposed;
 
         public SecureManagedPipeline(IPipelineConnection inConnection, PipelineFactory factory, ManagedSecurityContext securityContext)
         {
@@ -57,12 +59,28 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                             if (frameType == TlsFrameType.AppData)
                             {
                                 var outBuffer = _outputPipeline.Alloc();
-                                outBuffer.Append(messageBuffer);
+                                outBuffer.Write(messageBuffer.ToArray());
+                                //outBuffer.Append(messageBuffer);
+                                //outBuffer.Commit();
                                 await outBuffer.FlushAsync();
                             }
                             else if (frameType == TlsFrameType.Handshake)
                             {
-                                await _connectionState.ProcessHandshakeAsync(messageBuffer, _lowerConnection.Output);
+                                try
+                                {
+                                    await _connectionState.ProcessHandshakeAsync(messageBuffer, _lowerConnection.Output);
+                                    if (_connectionState.HashshakeComplete)
+                                    {
+                                        _handShakeCompleted.TrySetResult(ApplicationLayerProtocolIds.None);
+                                    }
+                                }
+                                catch (AlertException alert)
+                                {
+                                    var outBuffer = _lowerConnection.Output.Alloc();
+                                    alert.WriteToOutput(ref outBuffer, _connectionState);
+                                    await outBuffer.FlushAsync();
+                                    throw;
+                                }
                             }
                             else if (frameType == TlsFrameType.ChangeCipherSpec)
                             {
@@ -80,12 +98,47 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                     }
                 }
             }
-            catch
-            { }
+            catch (Exception ex)
+            {
+                _handShakeCompleted.TrySetException(ex);
+                throw;
+            }
         }
 
-        public void Dispose()
+        private async Task StartWriting()
         {
+            var maxBlockSize = _connectionState.MaxPlainText;
+            while (true)
+            {
+                var result = await _inputPipeline.ReadAsync();
+                var buffer = result.Buffer;
+                if (buffer.IsEmpty && result.IsCompleted)
+                {
+                    break;
+                }
+                try
+                {
+                    while (buffer.Length > 0)
+                    {
+                        ReadableBuffer messageBuffer;
+                        if (buffer.Length <= maxBlockSize)
+                        {
+                            messageBuffer = buffer;
+                            buffer = buffer.Slice(buffer.End);
+                        }
+                        else
+                        {
+                            messageBuffer = buffer.Slice(0, maxBlockSize);
+                            buffer = buffer.Slice(maxBlockSize);
+                        }
+                        await _connectionState.EncryptApplicationFrame(messageBuffer, _lowerConnection.Output);
+                    }
+                }
+                finally
+                {
+                    _inputPipeline.Advance(buffer.End);
+                }
+            }
         }
 
         /// <summary>
@@ -132,6 +185,23 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
             }
             messageBuffer = default(ReadableBuffer);
             return false;
+        }
+
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                _disposed = true;
+                _outputPipeline.CompleteWriter();
+                _inputPipeline.CompleteReader();
+                _connectionState.Dispose();
+                GC.SuppressFinalize(this);
+            }
+        }
+
+        ~SecureManagedPipeline()
+        {
+            _connectionState.Dispose();
         }
     }
 }

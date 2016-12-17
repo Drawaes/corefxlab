@@ -12,6 +12,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
         private ConnectionState _state;
         private ReadCursor _encryptedDataCursor;
         private TlsFrameType _frameType;
+        private int _encryptedDataStart;
 
         public FrameWriter(ref WritableBuffer buffer, TlsFrameType frameType, ConnectionState state)
         {
@@ -32,31 +33,25 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
                 buffer.Ensure(sizeof(ulong));
                 buffer.WriteBigEndian(state.ServerKey.SequenceNumber);
             }
+            _encryptedDataStart = buffer.BytesWritten;
         }
 
         public void Finish(ref WritableBuffer buffer)
         {
             if(_state.ServerDataEncrypted)
             {
-                var finalRecordSize = buffer.BytesWritten - _amountWritten - sizeof(ulong);
+                var encryptedLength = buffer.BytesWritten - _encryptedDataStart;
                 byte[] additionalData = new byte[13];
                 var addSpan = new Span<byte>(additionalData);
                 addSpan.Write64BitNumber(_state.ServerKey.SequenceNumber);
-                addSpan = addSpan.Slice(8);
+                addSpan = addSpan.Slice(sizeof(ulong));
                 addSpan.Write(_frameType);
                 addSpan = addSpan.Slice(1);
-                addSpan.Write((byte)0x03);
-                addSpan = addSpan.Slice(1);
-                addSpan.Write((byte)0x03);
-                addSpan = addSpan.Slice(1);
-                addSpan.Write16BitNumber((ushort)(finalRecordSize));
-                byte[] authTag;
-                var result = _state.ServerKey.Encrypt(buffer.AsReadableBuffer().Slice(13).ToArray(), additionalData, out authTag);
-                var readable = buffer.AsReadableBuffer().First;
-                readable = readable.Slice(13);
-                var r = new Span<byte>(result);
-                r.CopyTo(readable.Span);
-                buffer.Write(new Span<byte>(authTag));
+                addSpan.Write((ushort)0x0303);
+                addSpan = addSpan.Slice(2);
+                addSpan.Write16BitNumber((ushort)(encryptedLength));
+                
+                _state.ServerKey.Encrypt(ref buffer, _encryptedDataStart, additionalData);
             }
 
             var recordSize = buffer.BytesWritten - _amountWritten;

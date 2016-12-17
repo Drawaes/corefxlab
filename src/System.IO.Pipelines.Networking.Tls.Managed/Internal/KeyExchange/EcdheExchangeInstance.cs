@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Alerts;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyGeneration;
@@ -33,6 +34,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
 
         public void ProcessSupportedGroupsExtension(ReadableBuffer buffer)
         {
+            var bufferTemp = buffer;
             buffer = buffer.Slice(2);
             while (buffer.Length > 0)
             {
@@ -46,7 +48,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
                 }
                 buffer = buffer.Slice(2);
             }
-            throw new InvalidOperationException("No matching curve found");
+            throw new AlertException(AlertType.Handshake_Failure);
         }
 
         private void GenerateEphemeralKey()
@@ -130,7 +132,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
             }
             finally
             {
-                InteropSecrets.DestroyPublicKey(publicKeyHandle);
+                InteropSecrets.DestroyKey(publicKeyHandle);
             }
             //We have the master secret we can move on to making our keys!!!
             var seed = new byte[_state.ClientRandom.Length + _state.ServerRandom.Length + TlsLabels.KeyExpansionSize];
@@ -166,6 +168,21 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
             InteropSecrets.ExportPublicKey(_eKeyPair, buffer.Memory.Slice(0, _eKeySize));
             buffer.Advance(_eKeySize);
             //-------------------Written Server ECHDE PARAMS
+        }
+
+        public void Dispose()
+        {
+            if (_eKeyPair != IntPtr.Zero)
+            {
+                InteropSecrets.DestroyKey(_eKeyPair);
+                _eKeyPair = IntPtr.Zero;
+            }
+            GC.SuppressFinalize(this);
+        }
+
+        ~EcdheExchangeInstance()
+        {
+            Dispose();
         }
     }
 }

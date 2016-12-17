@@ -56,14 +56,14 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             var frame = new FrameWriter(ref buffer, TlsFrameType.Handshake, state);
             var handshakeFrame = new HandshakeWriter(ref buffer, state, HandshakeMessageType.Finished);
 
-            var hashResult = new byte[state.HandshakeHash.HashSize + VERIFY_DATA_LENGTH];
+            var hashResult = new byte[state.HandshakeHash.HashSize + TlsLabels.ServerFinishedSize];
             fixed (byte* hashPtr = hashResult)
             {
                 state.HandshakeHash.Finish(hashPtr + TlsLabels.ServerFinishedSize, state.HandshakeHash.HashSize, true);
             }
             TlsLabels.GetServerFinishedSpan().CopyTo(hashResult);
 
-            var verifyData = new byte[12];
+            var verifyData = new byte[VERIFY_DATA_LENGTH];
             KeyGeneration.PseudoRandomFunctions.P_Hash12(state.CipherSuite.Hmac, verifyData, masterSecret, hashResult);
             buffer.Write(new Span<byte>(verifyData));
 

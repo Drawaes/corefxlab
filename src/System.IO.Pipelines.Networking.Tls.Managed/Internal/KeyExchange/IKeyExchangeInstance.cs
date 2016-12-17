@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
 {
-    public interface IKeyExchangeInstance
+    public interface IKeyExchangeInstance:IDisposable
     {
         void ProcessSupportedGroupsExtension(ReadableBuffer buffer);
         void ProcessEcPointFormats(ReadableBuffer buffer);
