@@ -21,14 +21,15 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
 
         public void Dispose()
         {
-            throw new NotImplementedException();
         }
 
         public unsafe byte[] ProcessClientKeyExchange(ReadableBuffer buffer)
         {
+            _state.HandshakeHash.HashData(buffer);
+
             //Pull off the header and length
             buffer = buffer.Slice(6);
-            
+
             //According to https://tools.ietf.org/html/rfc5246
             //We should generate a random master secret. If anything goes wrong
             //we carry on as if it is all okay and fail later on, this defeats
@@ -37,7 +38,6 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
             var handleForAllocation = default(GCHandle);
             byte[] masterSecret = new byte[TlsImplementation.MASTER_SECRET_LENGTH];
             InteropRandom.GetRandom(masterSecret);
-            _state.HandshakeHash.HashData(buffer);
             try
             {
 
@@ -62,12 +62,12 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
                     return masterSecret;
                 }
                 // Check for downgrade
-                if(buffer.ReadBigEndian<ushort>() != (ushort)_state.TlsVersion)
+                if (buffer.ReadBigEndian<ushort>() != (ushort)_state.TlsVersion)
                 {
                     //Version is wrong so return random
                     return masterSecret;
                 }
-                var preMasterSecret = buffer.Slice(0,length).ToArray();
+                var preMasterSecret = buffer.Slice(0, length).ToArray();
                 var seed = new byte[_state.ClientRandom.Length + _state.ServerRandom.Length + TlsImplementation.MasterSecretSize];
                 var seedSpan = new Span<byte>(seed);
                 var seedLabel = new Span<byte>((byte*)TlsImplementation.MasterSecretPointer, TlsImplementation.MasterSecretSize);
@@ -80,7 +80,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
                 var serverRandom = new Span<byte>(_state.ServerRandom);
                 serverRandom.CopyTo(seedSpan);
 
-                TlsImplementation.P_Hash12(_state.CipherSuite.Hmac, masterSecret,preMasterSecret,seed );
+                TlsImplementation.P_Hash12(_state.CipherSuite.Hmac, masterSecret, preMasterSecret, seed);
             }
             catch
             {

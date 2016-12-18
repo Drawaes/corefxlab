@@ -26,7 +26,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
 
         public static void DestroyHash(IntPtr hash) => ExceptionHelper.CheckReturnCode(BCryptDestroyHash(hash));
 
-        public static IntPtr CreateHash(IntPtr provider, Memory<byte> buffer)
+        public static IntPtr CreateHash(IntPtr provider,byte[] key, Memory<byte> buffer)
         {
             IntPtr hashPtr;
             void* bufferPointer;
@@ -34,7 +34,17 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
             {
                 throw new InvalidOperationException("Problem getting the pointer for a native memory block");
             }
-            ExceptionHelper.CheckReturnCode(BCryptCreateHash(provider, out hashPtr, bufferPointer, buffer.Length, null, 0, 0));
+            if (key != null)
+            {
+                fixed (void* keyPointer = key)
+                {
+                    ExceptionHelper.CheckReturnCode(BCryptCreateHash(provider, out hashPtr, bufferPointer, buffer.Length, keyPointer,key.Length, 0));
+                }
+            }
+            else
+            {
+                ExceptionHelper.CheckReturnCode(BCryptCreateHash(provider, out hashPtr, bufferPointer, buffer.Length, null, 0, 0));
+            }
             return hashPtr;
         }
 
@@ -64,7 +74,12 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
             ExceptionHelper.CheckReturnCode(BCryptDuplicateHash(hash, out returnPtr, pointer, buffer.Length, 0));
             return returnPtr;
         }
-
+        
+        internal static void HashData(IntPtr hashHandle, byte* buffer, int length)
+        {
+            ExceptionHelper.CheckReturnCode(BCryptHashData(hashHandle, buffer, length, 0));
+        }
+        
         public static void HashData(IntPtr hash, Memory<byte> buffer)
         {
             void* pointer;

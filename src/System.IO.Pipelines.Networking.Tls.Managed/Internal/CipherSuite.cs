@@ -69,21 +69,30 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
         {
             fixed (byte* keyPtr = keyMaterial)
             {
-                var clientKey = BulkCipher.GetCipherKey(keyPtr, BulkCipher.KeySizeInBytes);
-                var serverPtr = keyPtr + BulkCipher.KeySizeInBytes;
-                var serverKey = BulkCipher.GetCipherKey(serverPtr, BulkCipher.KeySizeInBytes);
-                serverPtr = serverPtr + BulkCipher.KeySizeInBytes;
-
+                byte[] clientHmac = null;
+                byte[] serverHmac = null;
+                var currentPtr = keyPtr;
                 if (BulkCipher.RequiresHmac)
                 {
-                    //Currently only support AEAD algos
-                    throw new NotImplementedException();
+                    clientHmac = (new Span<byte>(currentPtr, Hmac.HashLength)).ToArray();
+                    currentPtr += Hmac.HashLength;
+                    serverHmac = (new Span<byte>(currentPtr, Hmac.HashLength)).ToArray();
+                    currentPtr += Hmac.HashLength;
                 }
+
+                var clientKey = BulkCipher.GetCipherKey(currentPtr, BulkCipher.KeySizeInBytes);
+                clientKey.HmacKey = clientHmac;
+                currentPtr = keyPtr + BulkCipher.KeySizeInBytes;
+                var serverKey = BulkCipher.GetCipherKey(currentPtr, BulkCipher.KeySizeInBytes);
+                serverKey.HmacKey = serverHmac;
+                currentPtr = currentPtr + BulkCipher.KeySizeInBytes;
+
+                
                 if (BulkCipher.NounceSaltLength > 0)
                 {
-                    clientKey.SetNouce(new Span<byte>(serverPtr, BulkCipher.NounceSaltLength));
-                    serverPtr = serverPtr + BulkCipher.NounceSaltLength;
-                    serverKey.SetNouce(new Span<byte>(serverPtr, BulkCipher.NounceSaltLength));
+                    clientKey.SetNouce(new Span<byte>(currentPtr, BulkCipher.NounceSaltLength));
+                    currentPtr = currentPtr + BulkCipher.NounceSaltLength;
+                    serverKey.SetNouce(new Span<byte>(currentPtr, BulkCipher.NounceSaltLength));
                 }
 
                 state.ClientKey = clientKey;

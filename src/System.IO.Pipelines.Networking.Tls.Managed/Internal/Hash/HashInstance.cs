@@ -16,7 +16,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
         private IntPtr _providerHandle;
         private int _hashSize;
 
-        public HashInstance(IntPtr providerHandle, NativeBufferPool pool, int stateSize, int hashSize)
+        public HashInstance(IntPtr providerHandle,byte[] key, NativeBufferPool pool, int stateSize, int hashSize)
         {
             _pool = pool;
             _stateSize = stateSize;
@@ -25,7 +25,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
             _hashSize = hashSize;
             try
             {
-                _hashHandle = InteropHash.CreateHash(_providerHandle, _buffer.Memory);
+                _hashHandle = InteropHash.CreateHash(_providerHandle,key, _buffer.Memory);
             }
             catch
             {
@@ -40,6 +40,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
         public void HashData(Memory<byte> memory)
         {
             InteropHash.HashData(_hashHandle, memory);
+        }
+
+        public unsafe void HashData(byte* buffer, int length)
+        {
+            InteropHash.HashData(_hashHandle, buffer, length);
         }
 
         public void HashData(ReadableBuffer buffer)
@@ -134,5 +139,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
             }
             GC.SuppressFinalize(this);
         }
+
+        
     }
 }

@@ -20,6 +20,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
         STATUS_NOT_SUPPORTED = 0xc00000bb,
         NTE_INVALID_PARAMETER = 0x80090027,
         NTE_INVALID_HANDLE = 0x80090026,
+        STATUS_DATA_ERROR = 0xC000003E,
 
     }
 }

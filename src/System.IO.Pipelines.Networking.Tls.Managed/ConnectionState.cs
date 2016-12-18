@@ -158,7 +158,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                 throw new NotSupportedException("No supported cipher suites");
             }
             _currentSuite = selectedCipher;
-            _handshakeHash = _currentSuite.Hash.GetLongRunningHash();
+            _handshakeHash = _currentSuite.Hash.GetLongRunningHash(null);
             _handshakeHash.HashData(originalBuffer);
             _keyExchange = _currentSuite.KeyExchange.GetInstance(this);
             buffer = buffer.Slice(sizeOfCipherSuites);
@@ -370,7 +370,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
             buffer.Advance(2);
             var amountWritten = buffer.BytesWritten;
 
-            ServerKey.Encrypt(ref buffer, unencryptedData, TlsFrameType.AppData);
+            ServerKey.Encrypt(ref buffer, unencryptedData, TlsFrameType.AppData,this);
 
             var recordSize = buffer.BytesWritten - amountWritten;
             bookmark.Span.Write((ushort)((recordSize >> 8) | (recordSize << 8)));

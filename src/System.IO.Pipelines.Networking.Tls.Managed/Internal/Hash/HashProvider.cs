@@ -45,9 +45,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
         public IntPtr AlgId => _algId;
         public int AlgIdLength => _algIdLength;
 
-        public HashInstance GetLongRunningHash()
+        public HashInstance GetLongRunningHash(byte[] key)
         {
-            return new HashInstance(_providerHandle, _pool, _bufferSizeNeededForState, _hashLength);
+            return new HashInstance(_providerHandle,key,  _pool, _bufferSizeNeededForState, _hashLength);
         }
 
         public unsafe void HashValue(byte* output, int outputLength, byte* secret, int secretLength, byte* message, int messageLength)

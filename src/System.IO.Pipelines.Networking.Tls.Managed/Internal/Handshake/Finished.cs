@@ -28,7 +28,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             //lets check it, if we find an error we keep checking so we reduce timing side channels
             int currentIndex = 0;
             bool match = true;
-            buffer = buffer.Slice(4);
+            buffer = buffer.Slice(4,12);
             while (buffer.Length > 0)
             {
                 if (currentIndex >= verifyData.Length)

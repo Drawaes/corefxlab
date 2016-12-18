@@ -38,14 +38,15 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCipher
                     if (chainingMode == BulkCipherChainingMode.CBC)
                     {
                         _requiresHmac = true;
+                        _nounceSaltLength = 0;
                     }
                     else
                     {
                         _requiresHmac = false;
+                        _nounceSaltLength = 4;
                     }
                     _keySizeInBytes = int.Parse(splitProv[1]) / 8;
                     InteropProperties.SetBlockChainingMode(_providerHandle, chainingMode);
-                    _nounceSaltLength = 4;
                 }
                 else
                 {
@@ -73,7 +74,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCipher
 
         public unsafe BulkCipherInstance GetCipherKey(byte* key, int keyLength)
         {
-            var returnKey = new BulkCipherInstance(_providerHandle, _pool,_bufferSizeNeededForState, key, keyLength);
+            var returnKey = new BulkCipherInstance(_providerHandle, _pool,_bufferSizeNeededForState, key, keyLength, !_requiresHmac);
             return returnKey;
         }
 

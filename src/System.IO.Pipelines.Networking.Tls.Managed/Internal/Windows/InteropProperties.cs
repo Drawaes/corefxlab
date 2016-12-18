@@ -83,6 +83,15 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
             return objectSize;
         }
 
+        private static string GetStringProperty(IntPtr provider, string property)
+        {
+            int objectSize;
+            ExceptionHelper.CheckReturnCode(BCryptGetProperty(provider,property, null, 0, out objectSize,0));
+            var buffer = stackalloc byte[objectSize];
+            ExceptionHelper.CheckReturnCode(BCryptGetProperty(provider, property, buffer, objectSize,out objectSize,0));
+            return Marshal.PtrToStringUni((IntPtr)buffer);
+        }
+
         private static void SetStringProperty(IntPtr provider, string property, string value)
         {
             ExceptionHelper.CheckReturnCode(
@@ -108,6 +117,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
         public static string[] GetECCurveNameList(IntPtr provider)
         {
             return GetStringArrayProperty(provider, BCRYPT_ECC_CURVE_NAME_LIST);
+        }
+
+        public static string GetBlockChainingMode(IntPtr provider)
+        {
+            return GetStringProperty(provider, BCRYPT_CHAINING_MODE);
         }
 
         public static void SetBlockChainingMode(IntPtr provider, BulkCipherChainingMode chainingMode)

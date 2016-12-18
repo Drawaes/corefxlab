@@ -41,18 +41,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
         {
             if(_state.ServerDataEncrypted)
             {
-                var encryptedLength = buffer.BytesWritten - _encryptedDataStart;
-                byte[] additionalData = new byte[13];
-                var addSpan = new Span<byte>(additionalData);
-                addSpan.Write64BitNumber(_state.ServerKey.SequenceNumber);
-                addSpan = addSpan.Slice(sizeof(ulong));
-                addSpan.Write(_frameType);
-                addSpan = addSpan.Slice(1);
-                addSpan.Write((ushort)0x0303);
-                addSpan = addSpan.Slice(2);
-                addSpan.Write16BitNumber((ushort)(encryptedLength));
-                
-                _state.ServerKey.Encrypt(ref buffer, _encryptedDataStart, additionalData);
+                _state.ServerKey.Encrypt(ref buffer, buffer.AsReadableBuffer().Slice(_encryptedDataStart) ,_frameType, _state);
             }
 
             var recordSize = buffer.BytesWritten - _amountWritten;

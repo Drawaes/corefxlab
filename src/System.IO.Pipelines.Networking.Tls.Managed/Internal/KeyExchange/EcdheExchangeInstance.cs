@@ -70,7 +70,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
 
             WriteServerECDHParams(ref buffer);
 
-            var hash = _state.CipherSuite.Hash.GetLongRunningHash();
+            var hash = _state.CipherSuite.Hash.GetLongRunningHash(null);
             hash.HashData(_state.ClientRandom);
             hash.HashData(_state.ServerRandom);
             hash.HashData(bookMark.Slice(0,messageSize));
