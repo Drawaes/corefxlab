@@ -30,7 +30,11 @@ namespace System.IO.Pipelines.Tests
             using (var clientContext = new SecurityContext(factory, "test", false, null))
             {
                 var ipEndPoint = new IPEndPoint(IPAddress.Parse("192.168.1.70"), 443);
-                socketClient.OnConnection(s => serverContext.CreateSecurePipeline(s).PerformHandshakeAsync());
+                socketClient.OnConnection(async s =>
+                {
+                    var sp = serverContext.CreateSecurePipeline(s);
+                    await Echo(sp);
+                });
                 socketClient.Start(ipEndPoint);
                 Console.ReadLine();
                 return Task.FromResult(0);
@@ -64,9 +68,8 @@ namespace System.IO.Pipelines.Tests
             }
         }
 
-        private async Task Echo(ISecurePipeline pipeline)
+        private async Task Echo(SecurePipeline pipeline)
         {
-            await pipeline.PerformHandshakeAsync();
             try
             {
                 while (true)

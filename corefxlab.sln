@@ -131,7 +131,7 @@ Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Benchmarks", "tests\Benchma
 EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "System.IO.Pipelines.Networking.Tls", "src\System.IO.Pipelines.Networking.Tls\System.IO.Pipelines.Networking.Tls.xproj", "{AA4A00E1-6C26-40CC-9BE3-30DEBAD06AE4}"
 EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "System.IO.Pipelines.Networking.Tls.Managed", "System.IO.Pipelines.Networking.Tls.Managed\System.IO.Pipelines.Networking.Tls.Managed.xproj", "{2DBBAF99-BCFA-42FF-995E-D17C6A25C4E2}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "System.IO.Pipelines.Networking.Tls.Managed", "src\System.IO.Pipelines.Networking.Tls.Managed\System.IO.Pipelines.Networking.Tls.Managed.xproj", "{2DBBAF99-BCFA-42FF-995E-D17C6A25C4E2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
