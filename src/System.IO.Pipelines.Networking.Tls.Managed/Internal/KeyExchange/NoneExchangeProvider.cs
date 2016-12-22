@@ -4,7 +4,7 @@ using System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Windows
+namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
 {
     internal class NoneExchangeProvider : IKeyExchangeProvider
     {

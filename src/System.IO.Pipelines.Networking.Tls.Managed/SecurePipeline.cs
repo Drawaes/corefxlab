@@ -67,7 +67,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                                     }
                                     break;
                                 case TlsFrameType.Alert:
-                                    //await _currentConnectionState.DecryptFrame(messageBuffer, _handshakePipe);
+                                    await _currentConnectionState.DecryptFrame(messageBuffer, _handshakePipe);
                                     throw new NotImplementedException();
                                 case TlsFrameType.Invalid:
                                 default:

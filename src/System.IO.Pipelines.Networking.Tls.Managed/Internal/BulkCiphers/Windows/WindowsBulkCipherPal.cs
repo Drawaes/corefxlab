@@ -11,17 +11,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
         private static readonly int s_NumberOfBulkCipherProvider = ((int[])Enum.GetValues(typeof(BulkCipherType))).Max() + 1;
         private readonly BulkCipherProvider[] _providers = new BulkCipherProvider[s_NumberOfBulkCipherProvider];
         private NativeBufferPool _pool;
-
-        public IBulkCipherProvider GetCipher(string cipherType)
-        {
-            BulkCipherType cipher;
-            if(!Enum.TryParse(cipherType, out cipher))
-            {
-                return null;
-            }
-            return GetCipher(cipher);
-        }
-
+        
         public IBulkCipherProvider GetCipher(BulkCipherType cipherType)
         {
             var provider = _providers[(int)cipherType];

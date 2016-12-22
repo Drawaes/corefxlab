@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Unix;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Windows;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -24,14 +25,19 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
             }
             _factory = factory;
 
-            if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                _certificateFactory = new WindowsCertificatePal();
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
+            //if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            //{
+            //    _certificateFactory = new WindowsCertificatePal();
+            //}
+            //else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            //{
+                Internal.Interop.Unix.InteropCrypto.Init();
+                _certificateFactory = new UnixCertificatePal();
+            //}
+            //else
+            //{
+            //    throw new NotImplementedException();
+            //}
             _certificateFactory.LoadCertificates(certificates); 
             _cipherList = new CipherList(_certificateFactory);
         }

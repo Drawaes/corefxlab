@@ -3,16 +3,18 @@ using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Windows;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.TlsSpec;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Win32.SafeHandles;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Windows
 {
     internal class EcdhExchangeProvider:IKeyExchangeProvider
     {
         private ICertificate _certificate;
-        private IntPtr _provider;
-        private Dictionary<string, IntPtr> _providers = new Dictionary<string, IntPtr>(StringComparer.OrdinalIgnoreCase);
+        private SafeBCryptAlgorithmHandle _provider;
+        private Dictionary<string, SafeBCryptAlgorithmHandle> _providers = new Dictionary<string, SafeBCryptAlgorithmHandle>(StringComparer.OrdinalIgnoreCase);
         private bool _isEphemeral;
         private static readonly string s_providerName = KeyExchangeType.ECDH.ToString();
         
@@ -20,10 +22,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Window
         {
             _isEphemeral = isEphemeral;
             _certificate = certificate;
-            _provider = InteropProviders.OpenSecretProvider(s_providerName);
-            foreach (var curve in InteropProperties.GetECCurveNameList(_provider))
+            _provider = BCryptHelper.OpenSecretProvider(s_providerName);
+            foreach (var curve in BCryptPropertiesHelper.GetECCurveNameList(_provider))
             {
-                _providers.Add(curve, IntPtr.Zero);
+                _providers.Add(curve, null);
             }
         }
 
@@ -43,23 +45,23 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Window
             return "ECDHE_" + _certificate.CertificateType.ToString();
         }
 
-        internal IntPtr GetProvider(EllipticCurves value)
+        internal SafeBCryptAlgorithmHandle GetProvider(EllipticCurves value)
         {
             lock (_providers)
             {
                 var curveName = value.ToString();
-                IntPtr provPtr;
+                SafeBCryptAlgorithmHandle provPtr;
                 if (_providers.TryGetValue(curveName, out provPtr))
                 {
-                    if (provPtr == IntPtr.Zero)
+                    if (provPtr == null)
                     {
-                        provPtr = InteropProviders.OpenSecretProvider(s_providerName);
-                        InteropProperties.SetEccCurveName(provPtr, curveName);
+                        provPtr = BCryptHelper.OpenSecretProvider(s_providerName);
+                        BCryptPropertiesHelper.SetEccCurveName(provPtr, curveName);
                         _providers[value.ToString()] = provPtr;
                     }
                     return provPtr;
                 }
-                return IntPtr.Zero;
+                return null;
             }
         }
 
@@ -69,18 +71,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Window
             {
                 foreach (var kv in _providers)
                 {
-                    try
-                    {
-                        if (kv.Value != IntPtr.Zero)
-                        {
-                            InteropProviders.CloseProvider(kv.Value);
-                        }
-                    }
-                    catch { }
+                        kv.Value?.Dispose();
                 }
                 _providers.Clear();
             }
-            InteropProviders.CloseProvider(_provider);
+            _provider.Dispose();
         }
     }
 }

@@ -4,8 +4,10 @@ using System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Windows;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.TlsSpec;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Win32.SafeHandles;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Windows
 {
@@ -14,9 +16,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Window
         private readonly ICertificate _certificate;
         private readonly ConnectionState _state;
         private readonly EcdhExchangeProvider _exchangeProvider;
-        private IntPtr _provider;
+        private SafeBCryptAlgorithmHandle _provider;
         private EllipticCurves _curveType;
-        private IntPtr _eKeyPair;
+        private SafeBCryptKeyHandle _eKeyPair;
         private int _eKeySize;
 
         public EcdheExchangeInstance(ICertificate certificate, ConnectionState state, EcdhExchangeProvider provider)
@@ -37,8 +39,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Window
             while (buffer.Length > 0)
             {
                 var value = (EllipticCurves)buffer.ReadBigEndian<ushort>();
-                IntPtr provider = _exchangeProvider.GetProvider(value);
-                if (provider != IntPtr.Zero)
+                SafeBCryptAlgorithmHandle provider = _exchangeProvider.GetProvider(value);
+                if (provider != null)
                 {
                     _provider = provider;
                     _curveType = value;
@@ -51,8 +53,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Window
 
         private void GenerateEphemeralKey()
         {
-            _eKeyPair = InteropSecrets.GenerateKeyPair(_provider);
-            _eKeySize = InteropSecrets.GetPublicKeyExportSize(_eKeyPair);
+            _eKeyPair = BCryptSecretsHelper.GenerateKeyPair(_provider);
+            _eKeySize = BCryptSecretsHelper.GetPublicKeyExportSize(_eKeyPair);
         }
 
         public unsafe byte[] ProcessClientKeyExchange(ReadableBuffer buffer)
@@ -79,24 +81,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Window
             }
 
             byte[] masterSecret;
-            var publicKeyHandle = InteropSecrets.ImportPublicKey(_provider, buffer, keyLength);
-            try
+            using (var publicKeyHandle = BCryptSecretsHelper.ImportPublicKey(_provider, buffer, keyLength))
             {
-                var secret = InteropSecrets.CreateSecret(publicKeyHandle, _eKeyPair);
-                try
+                using (var secret = BCryptSecretsHelper.CreateSecret(publicKeyHandle, _eKeyPair))
                 {
-                    masterSecret = InteropSecrets.GenerateMasterSecret12(secret, _state.CipherSuite.Hash, _state.ClientRandom, _state.ServerRandom);
-                }
-                finally
-                {
-                    InteropSecrets.DestroySecret(secret);
+                    masterSecret = BCryptSecretsHelper.GenerateMasterSecret12(secret, _state.CipherSuite.Hash, _state.ClientRandom, _state.ServerRandom);
                 }
             }
-            finally
-            {
-                InteropSecrets.DestroyKey(publicKeyHandle);
-            }
-
             return masterSecret;
         }
 
@@ -112,7 +103,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Window
             //Write compression type
             buffer.WriteBigEndian((byte)4);
 
-            InteropSecrets.ExportPublicKey(_eKeyPair, buffer.Memory.Slice(0, _eKeySize));
+            BCryptSecretsHelper.ExportPublicKey(_eKeyPair, buffer.Memory.Slice(0, _eKeySize));
             buffer.Advance(_eKeySize);
             //-------------------Written Server ECHDE PARAMS
         }
@@ -155,11 +146,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Window
 
         public void Dispose()
         {
-            if (_eKeyPair != IntPtr.Zero)
-            {
-                InteropSecrets.DestroyKey(_eKeyPair);
-                _eKeyPair = IntPtr.Zero;
-            }
+            _eKeyPair?.Dispose();
             GC.SuppressFinalize(this);
         }
 
