@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using static System.IO.Pipelines.Networking.Tls.Managed.Internal.TlsSpec.Tls12Utils;
 
-namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Windows
+namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
 {
     internal class NoneExchangeInstance : IKeyExchangeInstance
     {

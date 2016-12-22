@@ -23,7 +23,7 @@ namespace System.IO.Pipelines.Tests
         [Fact]
         public Task PipelineAllTheThings()
         {
-            using (var cert = new X509Certificate2(_certificatePath, _certificatePassword))
+            using (var cert = new X509Certificate2(_certificatePath, _certificatePassword,X509KeyStorageFlags.Exportable))
             using (var factory = new PipelineFactory())
             using (var serverContext = new SecurePipelineListener(factory, new X509Certificate2[] { cert }))
             using (var socketClient = new Networking.Sockets.SocketListener(factory))

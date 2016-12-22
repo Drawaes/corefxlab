@@ -10,7 +10,6 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers
         bool IsValid { get;}
         int NonceSaltLength { get;}
         int KeySizeInBytes { get;}
-        int BufferSizeNeededForState { get;}
         bool RequiresHmac { get;}
         unsafe IBulkCipherInstance GetCipherKey(byte* key, int keyLength);
     }

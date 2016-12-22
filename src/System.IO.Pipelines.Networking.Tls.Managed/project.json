@@ -1,4 +1,4 @@
-﻿{
+{
   "version": "0.1.0-*",
   "description": "Secure Pipelines implementation using TLS",
   "packOptions": {
@@ -15,19 +15,19 @@
 
   "dependencies": {
     "NETStandard.Library": "1.6.0",
-    "System.Buffers.Experimental": {"target": "project"},
+    "System.Buffers.Experimental": { "target": "project" },
     "System.IO.Pipelines": {
       "target": "project"
     },
-    "System.Slices": {"target": "project"},
-    "System.IO.Pipelines.Networking.Tls": {"target" : "project"}
+    "System.Slices": { "target": "project" },
+    "System.IO.Pipelines.Networking.Tls": { "target": "project" }
   },
 
   "frameworks": {
-    "net451": {},
-    "netstandard1.3": {
+    //"net461": {},
+    "netcoreapp1.0": {
       "dependencies": {
-        "System.Threading.ThreadPool": "4.0.10"
+        "System.Runtime.Loader": "4.3.0"
       }
     }
   }

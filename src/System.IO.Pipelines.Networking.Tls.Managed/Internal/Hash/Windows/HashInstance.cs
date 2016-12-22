@@ -4,19 +4,20 @@ using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Windows;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Win32.SafeHandles;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash.Windows
 {
-    public class HashInstance : IHashInstance
+    internal class HashInstance : IHashInstance
     {
         private NativeBufferPool _pool;
         private OwnedMemory<byte> _buffer;
-        private IntPtr _hashHandle;
+        private SafeBCryptHashHandle _hashHandle;
         private int _stateSize;
-        private IntPtr _providerHandle;
+        private SafeBCryptAlgorithmHandle _providerHandle;
         private int _hashSize;
 
-        public HashInstance(IntPtr providerHandle, byte[] key, NativeBufferPool pool, int stateSize, int hashSize)
+        public HashInstance(SafeBCryptAlgorithmHandle providerHandle, byte[] key, NativeBufferPool pool, int stateSize, int hashSize)
         {
             _pool = pool;
             _stateSize = stateSize;
@@ -25,7 +26,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash.Windows
             _hashSize = hashSize;
             try
             {
-                _hashHandle = InteropHash.CreateHash(_providerHandle, key, _buffer.Memory);
+                _hashHandle = Internal.Windows.BCryptHashHelper.CreateHash(_providerHandle, key, _buffer.Memory);
             }
             catch
             {
@@ -37,22 +38,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash.Windows
 
         public int HashLength => _hashSize;
 
-        public void HashData(ReadableBuffer buffer)
-        {
-            foreach (var memory in buffer)
-            {
-                HashData(memory);
-            }
-        }
-
         public unsafe void HashData(byte* buffer, int length)
         {
-            InteropHash.HashData(_hashHandle, buffer, length);
-        }
-
-        public void HashData(Memory<byte> memory)
-        {
-            InteropHash.HashData(_hashHandle, memory);
+            Internal.Windows.BCryptHashHelper.HashData(_hashHandle, buffer, length);
         }
 
         public unsafe void Finish(byte* output, int length, bool completed)
@@ -62,14 +50,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash.Windows
                 var tmpBuffer = _pool.Rent(_stateSize);
                 try
                 {
-                    var tempHash = InteropHash.Duplicate(_hashHandle, tmpBuffer.Memory);
-                    try
+                    using (var tempHash = Internal.Windows.BCryptHashHelper.Duplicate(_hashHandle, tmpBuffer.Memory))
                     {
-                        InteropHash.FinishHash(tempHash, output, length);
-                    }
-                    finally
-                    {
-                        InteropHash.DestroyHash(tempHash);
+                        Internal.Windows.BCryptHashHelper.FinishHash(tempHash, output, length);
                     }
                 }
                 finally
@@ -79,7 +62,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash.Windows
             }
             else
             {
-                InteropHash.FinishHash(_hashHandle, output, length);
+                Internal.Windows.BCryptHashHelper.FinishHash(_hashHandle, output, length);
                 Dispose();
             }
         }
@@ -91,18 +74,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash.Windows
 
         public void Dispose()
         {
-            if (_hashHandle != IntPtr.Zero)
-            {
-                try
-                {
-                    InteropHash.DestroyHash(_hashHandle);
-                    _hashHandle = IntPtr.Zero;
-                }
-                catch
-                {
-                    //Nom Nom
-                }
-            }
+            _hashHandle?.Dispose();
             if (_buffer != null)
             {
                 _pool.Return(_buffer);

@@ -8,15 +8,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash.Windows
 {
     internal class WindowsHashPal : IHashPal
     {
-        private readonly HashProvider[] _hashProviders;
+        private static readonly int s_providersLength = ((byte[])Enum.GetValues(typeof(HashType))).Max() + 1;
+        private readonly HashProvider[] _hashProviders = new HashProvider[s_providersLength];
         private NativeBufferPool _pool;
-
-        public WindowsHashPal()
-        {
-            var arraySize = ((byte[])Enum.GetValues(typeof(HashType))).Max() + 1;
-            _hashProviders = new HashProvider[arraySize];
-        }
-
+        
         public IHashProvider GetHashProvider(string algo)
         {
             HashType hashType;

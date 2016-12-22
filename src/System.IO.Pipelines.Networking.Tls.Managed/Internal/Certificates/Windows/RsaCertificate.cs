@@ -5,17 +5,18 @@ using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Windows;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
+using Microsoft.Win32.SafeHandles;
 using static System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Windows.InteropCertificates;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Windows
 {
     internal class RsaCertificate:ICertificate
     {
-        private IntPtr _privateKey;        
+        private SafeNCryptKeyHandle _privateKey;        
         private X509Certificate2 _certificate;
         private int _keyLength;
 
-        public RsaCertificate(IntPtr privateKey, X509Certificate2 certificate)
+        public RsaCertificate(SafeNCryptKeyHandle privateKey, X509Certificate2 certificate)
         {
             _privateKey = privateKey;
             _certificate = certificate;
@@ -28,7 +29,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Windo
 
         public unsafe void SignHash(IHashProvider hashProvider, Memory<byte> outputBuffer, byte* hash, int hashLength)
         {
-            var paddInfo = new BCRYPT_PKCS1_PADDING_INFO();
+            var paddInfo = new global::Interop.BCrypt.BCRYPT_PKCS1_PADDING_INFO();
             paddInfo.pszAlgId = hashProvider.AlgId;
             void* outputPtr;
             if(!outputBuffer.TryGetPointer(out outputPtr))
@@ -36,14 +37,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Windo
                 throw new InvalidOperationException("Could not get pointer");
             }
             int result;
-            ExceptionHelper.CheckReturnCode(
-                NCryptSignHash(_privateKey, &paddInfo, (IntPtr)hash, hashLength, (IntPtr)outputPtr , outputBuffer.Length, out result, InteropCertificates.Padding.NCRYPT_PAD_PKCS1_FLAG));
+            ExceptionHelper.CheckReturnCode(global::Interop.NCrypt.NCryptSignHash(_privateKey, &paddInfo, hash, hashLength, outputPtr , outputBuffer.Length, out result, global::Interop.NCrypt.AsymmetricPaddingMode.NCRYPT_PAD_PKCS1_FLAG));
         }
         
-        public int Decrypt(IntPtr cipherText, int cipherTextLength, IntPtr plainText, int plainTextLength)
+        public unsafe int Decrypt(IntPtr cipherText, int cipherTextLength, IntPtr plainText, int plainTextLength)
         {
             int returnResult;
-            ExceptionHelper.CheckReturnCode(NCryptDecrypt(_privateKey, cipherText, cipherTextLength, IntPtr.Zero, plainText, plainTextLength, out returnResult, (uint)InteropCertificates.Padding.NCRYPT_PAD_PKCS1_FLAG));
+            ExceptionHelper.CheckReturnCode(global::Interop.NCrypt.NCryptDecrypt(_privateKey, (byte*) cipherText, cipherTextLength, null,(byte*) plainText, plainTextLength, out returnResult, global::Interop.NCrypt.AsymmetricPaddingMode.NCRYPT_PAD_PKCS1_FLAG));
             return returnResult;
         }
     }

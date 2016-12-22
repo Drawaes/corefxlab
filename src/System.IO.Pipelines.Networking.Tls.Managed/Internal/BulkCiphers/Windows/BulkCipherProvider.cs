@@ -2,15 +2,17 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Windows;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Win32.SafeHandles;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Windows
 {
     internal class BulkCipherProvider : IBulkCipherProvider
     {
         private bool _isValid;
-        private IntPtr _providerHandle;
+        private SafeBCryptAlgorithmHandle _providerHandle;
         private readonly string _providerName;
         private readonly bool _requiresHmac = true;
         private int _bufferSizeNeededForState;
@@ -23,15 +25,15 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
             _providerName = provider;
             var splitProv = provider.Split('_');
             var parentProv = splitProv[0];
-            _providerHandle = InteropProviders.OpenBulkProvider(parentProv);
-            if (_providerHandle == IntPtr.Zero)
+            _providerHandle = BCryptHelper.OpenBulkProvider(parentProv);
+            if (_providerHandle == null)
             {
                 _isValid = false;
                 return;
             }
             try
             {
-                _bufferSizeNeededForState = InteropProperties.GetObjectLength(_providerHandle);
+                _bufferSizeNeededForState = BCryptPropertiesHelper.GetObjectLength(_providerHandle);
                 if (parentProv == "AES")
                 {
                     var chainingMode = (BulkCipherChainingMode)Enum.Parse(typeof(BulkCipherChainingMode), splitProv[2], true);
@@ -46,11 +48,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
                         _nonceSaltLength = 4;
                     }
                     _keySizeInBytes = int.Parse(splitProv[1]) / 8;
-                    InteropProperties.SetBlockChainingMode(_providerHandle, chainingMode);
+                    BCryptPropertiesHelper.SetBlockChainingMode(_providerHandle, chainingMode);
                 }
                 else
                 {
-                    _keySizeInBytes = InteropProperties.GetKeySizeInBits(_providerHandle) / 8;
+                    _keySizeInBytes = BCryptPropertiesHelper.GetKeySizeInBits(_providerHandle) / 8;
                 }
                 _isValid = true;
             }
@@ -87,11 +89,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
 
         public void Dispose()
         {
-            if (_providerHandle != IntPtr.Zero)
-            {
-                InteropProviders.CloseProvider(_providerHandle);
-                _providerHandle = IntPtr.Zero;
-            }
+            _providerHandle.Dispose();
         }
     }
 }

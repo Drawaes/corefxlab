@@ -3,32 +3,35 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Windows;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.TlsSpec;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using static System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Windows.InteropBulkEncryption;
+using Microsoft.Win32.SafeHandles;
+using static global::Interop.BCrypt;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Windows
 {
-    internal class AeadCipherKey:IBulkCipherInstance
+    internal sealed class AeadCipherKey : IBulkCipherInstance
     {
         private NativeBufferPool _pool;
-        private IntPtr _handle;
+        private SafeBCryptKeyHandle _handle;
         private byte[] _nonceBuffer;
         private ulong _sequenceNumber;
         private OwnedMemory<byte> _buffer;
         private int _blockLength;
         private int _maxTagLength;
 
-        public unsafe AeadCipherKey(IntPtr provider, NativeBufferPool pool, int bufferSizeNeeded, byte* keyPointer, int keyLength)
+        public unsafe AeadCipherKey(SafeBCryptAlgorithmHandle provider, NativeBufferPool pool, int bufferSizeNeeded, byte* keyPointer, int keyLength)
         {
             _pool = pool;
             _buffer = pool.Rent(bufferSizeNeeded);
             try
             {
-                _handle = ImportKey(provider, _buffer.Memory, keyPointer, keyLength);
-                _blockLength = InteropProperties.GetBlockLength(_handle);
-                _maxTagLength = InteropProperties.GetMaxAuthTagLength(_handle);
+                _handle = Internal.Windows.BCryptHelper.ImportKey(provider, _buffer.Memory, keyPointer, keyLength);
+                _blockLength = BCryptPropertiesHelper.GetBlockLength(_handle);
+                _maxTagLength = BCryptPropertiesHelper.GetMaxAuthTagLength(_handle);
             }
             catch
             {
@@ -52,7 +55,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
         public void WriteExplicitNonce(ref WritableBuffer buffer)
         {
             buffer.Ensure(8);
-            buffer.Write(new Span<byte>(_nonceBuffer,4));
+            buffer.Write(new Span<byte>(_nonceBuffer, 4));
         }
 
         public unsafe void Encrypt(ref WritableBuffer buffer, ReadableBuffer plainText, TlsFrameType frameType, ConnectionState state)
@@ -71,7 +74,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
             {
                 var cInfo = new BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO();
                 cInfo.dwInfoVersion = 1;
-                cInfo.cbSize = Marshal.SizeOf<BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO>();
+                cInfo.cbSize = sizeof(BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO);
                 cInfo.cbNonce = _nonceBuffer.Length;
                 cInfo.pbNonce = (IntPtr)noncePtr;
                 var iv = stackalloc byte[_blockLength];
@@ -102,7 +105,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
                         throw new NotImplementedException("Need to implement a pinned array if we can't get a pointer");
                     }
                     int amountWritten;
-                    ExceptionHelper.CheckReturnCode(BCryptEncrypt(_handle, inPointer, b.Length, &cInfo, iv, (uint)_blockLength, inPointer, b.Length, out amountWritten, 0));
+                    ExceptionHelper.CheckReturnCode(BCryptEncrypt(_handle, inPointer, b.Length, &cInfo, iv, _blockLength, inPointer, b.Length, out amountWritten, 0));
                     cInfo.dwFlags = AuthenticatedCipherModeInfoFlags.InProgress;
                     if (totalDataLength == 0)
                     {
@@ -123,7 +126,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
             var additionalData = stackalloc byte[13];
             var spanAdditional = new Span<byte>(additionalData, 13);
             spanAdditional.Write64BitNumber(_sequenceNumber);
-            _sequenceNumber ++;
+            _sequenceNumber++;
             spanAdditional = spanAdditional.Slice(8);
             buffer.Slice(0, 3).CopyTo(spanAdditional);
             spanAdditional = spanAdditional.Slice(3);
@@ -133,8 +136,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
             var nSpan = new Span<byte>(_nonceBuffer, 4);
             buffer.Slice(0, 8).CopyTo(nSpan);
             buffer = buffer.Slice(8);
-            
-            var cipherText = buffer.Slice(0,newLength);
+
+            var cipherText = buffer.Slice(0, newLength);
 
             var authTag = buffer.Slice(newLength, Tls12Utils.AEAD_TAG_LENGTH);
             void* authPtr;
@@ -152,7 +155,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
                 {
                     var authTagArray = authTag.ToArray();
                     authHandle = GCHandle.Alloc(authTagArray, GCHandleType.Pinned);
-                    authPtr = (void*) authHandle.AddrOfPinnedObject();
+                    authPtr = (void*)authHandle.AddrOfPinnedObject();
                 }
 
                 var cInfo = new BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO();
@@ -160,7 +163,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
                 cInfo.cbSize = Marshal.SizeOf<BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO>();
                 cInfo.cbAuthData = 13;
                 cInfo.pbAuthData = (IntPtr)additionalData;
-                cInfo.pbTag = (IntPtr) authPtr;
+                cInfo.pbTag = (IntPtr)authPtr;
                 cInfo.cbTag = Tls12Utils.AEAD_TAG_LENGTH;
                 cInfo.dwFlags = AuthenticatedCipherModeInfoFlags.ChainCalls;
                 var iv = stackalloc byte[_blockLength];
@@ -174,22 +177,21 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
                     cInfo.pbNonce = (IntPtr)nPtr;
 
                     int amountToWrite = cipherText.Length;
-                    foreach(var b in cipherText)
+                    foreach (var b in cipherText)
                     {
                         amountToWrite -= b.Length;
-                        if(b.Length ==0 && b.Length == 0)
+                        if (b.Length == 0 && b.Length == 0)
                         {
                             continue;
                         }
                         bool isLast = amountToWrite == 0;
                         WriteBlock(ref writer, b, ref cInfo, isLast, iv);
                     }
-
                 }
             }
             finally
             {
-                if(authHandle.IsAllocated)
+                if (authHandle.IsAllocated)
                 {
                     authHandle.Free();
                 }
@@ -198,24 +200,24 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
 
         private unsafe void WriteBlock(ref WritableBuffer writeBuffer, Memory<byte> dataToWrite, ref BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO info, bool isLast, byte* ivPtr)
         {
-            if(isLast)
+            if (isLast)
             {
                 info.dwFlags = AuthenticatedCipherModeInfoFlags.None;
             }
             writeBuffer.Ensure(dataToWrite.Length);
             void* output;
-            if(!writeBuffer.Memory.TryGetPointer(out output))
+            if (!writeBuffer.Memory.TryGetPointer(out output))
             {
                 throw new NotImplementedException();
             }
             void* input;
-            if(!dataToWrite.TryGetPointer(out input))
+            if (!dataToWrite.TryGetPointer(out input))
             {
                 throw new NotImplementedException();
             }
             int result;
             ExceptionHelper.CheckReturnCode(
-                BCryptDecrypt(_handle, input, dataToWrite.Length, ref info, ivPtr, _blockLength,output, dataToWrite.Length,out result,0));
+                BCryptDecrypt(_handle, input, dataToWrite.Length, Unsafe.AsPointer(ref info), ivPtr, _blockLength, output, dataToWrite.Length, out result, 0));
             writeBuffer.Advance(result);
         }
 
@@ -226,11 +228,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
 
         public void Dispose()
         {
-            if (_handle != IntPtr.Zero)
-            {
-                DestroyKey(_handle);
-                _handle = IntPtr.Zero;
-            }
+            _handle?.Dispose();
             if (_buffer != null)
             {
                 _pool.Return(_buffer);
