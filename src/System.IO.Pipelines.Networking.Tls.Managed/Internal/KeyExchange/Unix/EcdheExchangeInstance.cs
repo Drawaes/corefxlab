@@ -106,7 +106,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Unix
             _eKeySize =( (InteropEcdh.EVP_PKEY_bits(_eKey) + 7)/8) *2;
         }
 
-        public byte[] ProcessClientKeyExchange(ReadableBuffer buffer)
+        public unsafe byte[] ProcessClientKeyExchange(ReadableBuffer buffer)
         {
             _state.HandshakeHash.HashData(buffer);
             buffer = buffer.Slice(1); // Slice off type
@@ -127,29 +127,30 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Unix
                 throw new IndexOutOfRangeException("Bad length or compression type");
             }
 
-            /*To deserialize the public key:
+            IntPtr clientsPubKey = InteropEcdh.ImportPublicKey(_eKey, buffer.ToArray(),_nid);
 
-Pass the octets to EC_POINT_oct2point() to get an EC_POINT.
-Pass the EC_POINT to EC_KEY_set_public_key() to get an EC_KEY.
-Pass the EC_KEY to EVP_PKEY_set1_EC_KEY to get an EVP_KEY.*/
+            //Create shared context
+            IntPtr ctx = InteropEcdh.EVP_PKEY_CTX_new(_eKey, IntPtr.Zero);
+            ExceptionHelper.CheckOpenSslError(InteropEcdh.EVP_PKEY_derive_init(ctx));
+            ExceptionHelper.CheckOpenSslError(InteropEcdh.EVP_PKEY_derive_set_peer(ctx, clientsPubKey));
+            IntPtr size = IntPtr.Zero;
+            ExceptionHelper.CheckOpenSslError(InteropEcdh.EVP_PKEY_derive(ctx, null, ref size));
+            var tmpBuffer = new byte[size.ToInt32()];
+            fixed(void* tPtr = tmpBuffer)
+            {
+                ExceptionHelper.CheckOpenSslError(InteropEcdh.EVP_PKEY_derive(ctx, tPtr, ref size));
+            }
+            byte[] master = new byte[48];
+            var seed = new byte[Tls12Utils.MasterSecretSize + Tls12Utils.RANDOM_LENGTH * 2];
+            var sSpan = new Span<byte>(seed);
+            Tls12Utils.GetMasterSecretSpan().CopyTo(sSpan);
+            sSpan = sSpan.Slice(Tls12Utils.MasterSecretSize);
+            _state.ClientRandom.CopyTo(sSpan);
+            sSpan = sSpan.Slice(_state.ClientRandom.Length);
+            _state.ServerRandom.CopyTo(sSpan);
+            Tls12Utils.P_Hash12(_state.CipherSuite.Hash, master, tmpBuffer, seed);
 
-            //Need to make a poiint object first?
-
-            //int EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *p,
-            //const unsigned char* buf, size_t len, BN_CTX* ctx);
-
-            //Need to create a key object first?
-
-            //int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub);
-
-            //need to create a EVP_KEY first?
-
-            //int EVP_PKEY_set1_EC_KEY(EVP_PKEY *pkey, struct ec_key_st *key);
-
-
-
-
-
+            return master;
         }
     }
 }

@@ -29,6 +29,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.TlsSpec
         internal static readonly int ServerFinishedSize = SERVER_FINISHED.Length;
         internal static Span<byte> GetClientFinishedSpan() => new Span<byte>((void*)ClientFinishedPointer, ClientFinishedSize);
         internal static Span<byte> GetServerFinishedSpan() => new Span<byte>((void*)ServerFinishedPointer, ServerFinishedSize);
+        internal static Span<byte> GetMasterSecretSpan() => new Span<byte>((void*) MasterSecretPointer, MasterSecretSize);
 
         public static unsafe void P_Hash12(IHashProvider hash, byte[] keyMaterial, byte[] secret, byte[] seed)
         {
