@@ -35,6 +35,40 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Unix
         internal extern static IntPtr EC_KEY_get0_group(IntPtr key);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal unsafe extern static IntPtr EC_POINT_point2oct(IntPtr group, IntPtr p, int form, void* buf, IntPtr len, IntPtr ctx);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal unsafe extern static IntPtr EC_POINT_new(IntPtr group);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal unsafe extern static int EC_POINT_oct2point(IntPtr group, IntPtr point, void* buf, IntPtr len, IntPtr ctx);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal unsafe extern static IntPtr EC_KEY_new_by_curve_name(int nid);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal unsafe extern static int EC_KEY_set_public_key(IntPtr key, IntPtr point);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal unsafe extern static IntPtr EVP_PKEY_new();
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal extern static int EVP_PKEY_set1_EC_KEY(IntPtr pkey, IntPtr eckey);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal extern static int EVP_PKEY_derive_init(IntPtr ctx);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal extern static int EVP_PKEY_derive_set_peer(IntPtr ctx, IntPtr peerKey);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        internal unsafe extern static int EVP_PKEY_derive(IntPtr ctx, void* key, ref IntPtr keylen);
+
+        internal unsafe static IntPtr ImportPublicKey(IntPtr ecKey, byte[] keyData, int nid)
+        {
+            var group = ExceptionHelper.CheckPointerError(EC_KEY_get0_group(EVP_PKEY_get1_EC_KEY(ecKey)));
+            var newPoint = ExceptionHelper.CheckPointerError(EC_POINT_new(group));
+            fixed (void* ptr = keyData)
+            {
+                ExceptionHelper.CheckOpenSslError(EC_POINT_oct2point(group, newPoint, ptr, (IntPtr)keyData.Length, IntPtr.Zero));
+            }
+            //We have a point now we need to make a key
+            IntPtr newKey = ExceptionHelper.CheckPointerError(EC_KEY_new_by_curve_name(nid));
+            ExceptionHelper.CheckOpenSslError(EC_KEY_set_public_key(newKey, newPoint));
+            IntPtr evpKey = ExceptionHelper.CheckPointerError(EVP_PKEY_new());
+            ExceptionHelper.CheckOpenSslError(EVP_PKEY_set1_EC_KEY(evpKey, newKey));
+            return evpKey;
+        }
 
         internal unsafe static void GetPublicKey(IntPtr pKey, Memory<byte> outBuffer)
         {
