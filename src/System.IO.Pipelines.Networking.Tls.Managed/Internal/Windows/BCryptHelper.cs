@@ -90,7 +90,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
 
             SafeBCryptKeyHandle handle;
             ExceptionHelper.CheckReturnCode(
-                BCryptImportKey(provider, null, "KeyDataBlob", out handle, (IntPtr)memPtr, objectBuffer.Length, (IntPtr)keyBlob, sizeof(BCRYPT_KEY_DATA_BLOB) + keyLength, 0));
+                BCryptImportKey(provider, IntPtr.Zero, "KeyDataBlob", out handle, (IntPtr)memPtr, objectBuffer.Length, (IntPtr)keyBlob, sizeof(BCRYPT_KEY_DATA_BLOB) + keyLength, 0));
             return handle;
         }
 

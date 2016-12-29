@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Unix;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
@@ -10,7 +11,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Unix
     internal class UnixCertificatePal:ICertificatePal
     {
         private ICertificate[] _certificates;
-
+        private CipherList _cipherList;
+        private X509Certificate2[] _originalCertificates;
+        
         private ICertificate GetCertificate(X509Certificate2 certificate)
         {
             var cert = certificate.Export(X509ContentType.Pkcs12,"");
@@ -23,7 +26,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Unix
             switch (certType)
             {
                 case CertificateType.Rsa:
-                    return new RsaCertificate(privateKey, certificate);
+                    return new RsaCertificate(privateKey, certificate, _cipherList);
                 default:
                     throw new NotImplementedException("Unsupported Certificate type");
             }
@@ -43,8 +46,14 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Unix
 
         public void LoadCertificates(X509Certificate2[] certificates)
         {
+            _originalCertificates = certificates;
+        }
+
+        public void SetCipherList(CipherList cipherList)
+        {
+            _cipherList = cipherList;
             var certList = new List<ICertificate>();
-            foreach (var cert in certificates)
+            foreach (var cert in _originalCertificates)
             {
                 var iCert = GetCertificate(cert);
                 if (iCert != null)

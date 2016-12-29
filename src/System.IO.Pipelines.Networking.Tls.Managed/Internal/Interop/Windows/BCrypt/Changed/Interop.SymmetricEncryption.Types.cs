@@ -4,6 +4,7 @@
 
 using System;
 using System.Diagnostics;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers;
 using System.Runtime.InteropServices;
 
 internal partial class Interop
@@ -22,13 +23,13 @@ internal partial class Interop
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        internal struct BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO
+        internal unsafe struct BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO
         {
             internal int cbSize;
             internal int dwInfoVersion;
             internal IntPtr pbNonce;            // byte * //16
             internal int cbNonce;
-            internal IntPtr pbAuthData;         // byte * //28
+            internal AdditionalInformation* pbAuthData;         // byte * //28
             internal int cbAuthData;
             internal IntPtr pbTag;              // byte * //40
             internal int cbTag;

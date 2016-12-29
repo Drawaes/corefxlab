@@ -9,9 +9,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash
     {
         SHA = 2,
         SHA256 = 4,
-        SHA384 = 5
+        SHA384 = 5,
         //Numbers from https://tools.ietf.org/html/rfc5246#section-7.4.1.4.1
-        //    md5(1), sha1(2), sha224(3), sha256(4), sha384(5),
-        //sha512(6)
+        //    md5(1), sha1(2), sha224(3),
+        SHA512 =6,
     }
 }

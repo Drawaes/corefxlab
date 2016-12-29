@@ -33,7 +33,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Unix
         
         public bool RequiresHmac => !_isAead;
         
-        public unsafe IBulkCipherInstance GetCipherKey(byte* key, int keyLength)
+        public unsafe IBulkCipherInstance GetCipherKey(byte* key, int keyLength, CipherSuite suite)
         {
             if(_isAead)
             {

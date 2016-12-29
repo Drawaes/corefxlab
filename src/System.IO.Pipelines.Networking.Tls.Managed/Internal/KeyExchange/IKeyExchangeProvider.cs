@@ -8,7 +8,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
 {
     internal interface IKeyExchangeProvider : IDisposable
     {
-        IKeyExchangeInstance GetInstance(ConnectionState state);
+        IKeyExchangeInstance GetInstance(IConnectionState state);
         ICertificate Certificate { get;}
     }
 }

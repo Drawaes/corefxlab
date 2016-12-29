@@ -14,9 +14,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Unix
         private IntPtr _privateKey;
         private X509Certificate2 _certificate;
         private int _keyLength;
+        private CipherList _cipherList;
         
-        public RsaCertificate(IntPtr privateKey, X509Certificate2 certificate)
+        public RsaCertificate(IntPtr privateKey, X509Certificate2 certificate, CipherList cipherList)
         {
+            _cipherList = cipherList;
             _privateKey = privateKey;
             _certificate = certificate;
             _keyLength = RSAKeySize(_privateKey);
@@ -28,7 +30,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Unix
 
         public CertificateType CertificateType => CertificateType.Rsa;
 
-        public unsafe void SignHash(IHashProvider hashId, Memory<byte> outputBuffer, byte* hash, int hashLength)
+        public unsafe void SignHash(IHashProvider hashId, byte* outputBuffer,int outputBufferLength,  byte* hash, int hashLength, PaddingType padding)
         {
             var ctx = ExceptionHelper.CheckPointerError(EVP_PKEY_CTX_new(_privateKey, IntPtr.Zero));
             try
@@ -36,13 +38,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Unix
                 ExceptionHelper.CheckOpenSslError(EVP_PKEY_sign_init(ctx));
                 SetRSAPadding(ctx);
                 SetRSADigest(ctx,  hashId.AlgId);
-                void* outputPtr;
-                if (!outputBuffer.TryGetPointer(out outputPtr))
-                {
-                    throw new InvalidOperationException("Could not get pointer");
-                }
-                int bufferLength = outputBuffer.Length;
-                ExceptionHelper.CheckOpenSslError(EVP_PKEY_sign(ctx, (IntPtr)outputPtr, ref bufferLength ,(IntPtr)hash, hashLength));
+                ExceptionHelper.CheckOpenSslError(EVP_PKEY_sign(ctx, (IntPtr)outputBuffer, ref outputBufferLength ,(IntPtr)hash, hashLength));
             }
             finally
             {
@@ -64,6 +60,16 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Unix
             {
                 EVP_PKEY_CTX_free(ctx);
             }
+        }
+
+        public IHashAndSignInstance GetHashandSignInstance(HashType hashType, PaddingType padding)
+        {
+            var hash = _cipherList.HashFactory.GetHashProvider(hashType);
+            if(hash == null)
+            {
+                return null;
+            }
+            return new HashAndSignRsaInstance(hash, padding, this);
         }
     }
 }

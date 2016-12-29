@@ -9,7 +9,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
 {
     internal static class Hello
     {
-        public static void WriteServerHelloDone(ConnectionState state, ref WritableBuffer buffer)
+        public static void WriteServerHelloDone(IConnectionState state, ref WritableBuffer buffer)
         {
             var frame = new FrameWriter(ref buffer, TlsFrameType.Handshake, state);
             var handshakeFrame = new HandshakeWriter(ref buffer, state, HandshakeMessageType.ServerHelloDone);
@@ -18,7 +18,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             frame.Finish(ref buffer);
         }
 
-        public static void ProcessClientHello(ReadableBuffer buffer, ConnectionState state)
+        public static void ProcessClientHello(ReadableBuffer buffer, IConnectionState state)
         {
             var originalBuffer = buffer;
             buffer = buffer.Slice(4);
@@ -37,7 +37,23 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             {
                 buffer = buffer.Slice(sessionLength);
             }
-            buffer = buffer.Slice(state.GetCipherSuite(buffer));
+            var cipherLength = buffer.ReadBigEndian<ushort>();
+            bool foundCipher = false;
+            var cipherBuffer = buffer.Slice(2, cipherLength);
+            while(cipherBuffer.Length > 1)
+            {
+                if(state.TrySetCipherSuite(cipherBuffer.ReadBigEndian<ushort>()))
+                {
+                    foundCipher = true;
+                    break;
+                }
+                cipherBuffer = cipherBuffer.Slice(2);
+            }
+            if(!foundCipher)
+            {
+                Alerts.AlertException.ThrowAlertException(Alerts.AlertType.Handshake_Failure);
+            }
+            buffer = buffer.Slice(cipherLength + 2);
             //Now we have the cipher suite we can start the handshake hash
             //this needs to be all messages upto the finish including this
             state.HandshakeHash.HashData(originalBuffer);
@@ -54,7 +70,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             state.ProcessHelloExtensions(buffer);
         }
 
-        private static void ProcessHelloExtensions(this ConnectionState state, ReadableBuffer buffer)
+        private static void ProcessHelloExtensions(this IConnectionState state, ReadableBuffer buffer)
         {
             var extensionsLength = buffer.ReadBigEndian<ushort>();
             buffer = buffer.Slice(2);
@@ -70,52 +86,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
                 buffer = buffer.Slice(2);
                 var extensionBuffer = buffer.Slice(0, extensionSize);
                 buffer = buffer.Slice(extensionSize);
-                switch (extensionType)
-                {
-                    case ExtensionType.Application_layer_protocol_negotiation:
-                        //ExtensionAlpn(extensionBuffer);
-                        break;
-                    case ExtensionType.Supported_groups:
-                         state.KeyExchange.ProcessSupportedGroupsExtension(extensionBuffer);
-                        break;
-                    case ExtensionType.Ec_point_formats:
-                        state.KeyExchange.ProcessEcPointFormats(extensionBuffer);
-                        break;
-                    case ExtensionType.Heartbeat:
-                    case ExtensionType.SessionTicket:
-                    case ExtensionType.Extended_master_secret:
-                    case ExtensionType.Renegotiation_info:
-                    case ExtensionType.Status_request:
-                    case ExtensionType.Signed_certificate_timestamp:
-                    case ExtensionType.Server_name:
-                    case ExtensionType.Signature_algorithms:
-                    default:
-                        break;
-                }
+                state.ProcessExtension(extensionType, extensionBuffer);
             }
         }
-
-        private static int GetCipherSuite(this ConnectionState state, ReadableBuffer buffer)
-        {
-            //Deal with cipher suites
-            var sizeOfCipherSuites = buffer.ReadBigEndian<ushort>();
-            buffer = buffer.Slice(2, sizeOfCipherSuites);
-            while (buffer.Length > 0)
-            {
-                var cipherId = buffer.ReadBigEndian<ushort>();
-                var cipherInfo = state.CipherList.GetCipherInfo(cipherId);
-                if (cipherInfo != null)
-                {
-                    state.SetCipherSuite(cipherInfo);
-                    return sizeOfCipherSuites + 2;
-                }
-                buffer = buffer.Slice(2);
-            }
-            Alerts.AlertException.ThrowAlertException(Alerts.AlertType.Handshake_Failure);
-            return sizeOfCipherSuites + 2;
-        }
-
-        public static void WriteServerHello(ref WritableBuffer buffer, ConnectionState state)
+        
+        public static void WriteServerHello(ref WritableBuffer buffer, ConnectionStateTls12 state)
         {
             var frame = new FrameWriter(ref buffer, TlsFrameType.Handshake, state);
             var handshakeFrame = new HandshakeWriter(ref buffer, state, HandshakeMessageType.ServerHello);

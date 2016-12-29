@@ -14,23 +14,32 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
             return (int)contentSize;
         }
 
-        internal static void Write64BitNumber(this Span<byte> span, ulong numberToWrite)
+        internal static ulong Reverse(ulong value)
         {
-            span.Write((byte)((numberToWrite & 0xFF00000000000000) >> 56));
-            span = span.Slice(1);
-            span.Write((byte)((numberToWrite & 0x00FF000000000000) >> 48));
-            span = span.Slice(1);
-            span.Write((byte)((numberToWrite & 0x0000FF0000000000) >> 40));
-            span = span.Slice(1);
-            span.Write((byte)((numberToWrite & 0x000000FF00000000) >> 32));
-            span = span.Slice(1);
-            span.Write((byte)((numberToWrite & 0x00000000FF000000) >> 24));
-            span = span.Slice(1);
-            span.Write((byte)((numberToWrite & 0x0000000000FF0000) >> 16));
-            span = span.Slice(1);
-            span.Write((byte)((numberToWrite & 0x000000000000FF00) >> 8));
-            span = span.Slice(1);
-            span.Write((byte)((numberToWrite & 0x00000000000000FF)));
+            value = (value << 32) | (value >> 32);
+            value = ((value & 0xFFFF0000FFFF0000) >> 16) | ((value & 0x0000FFFF0000FFFF) << 16);
+            value = ((value & 0xFF00FF00FF00FF00) >> 8) | ((value & 0x00FF00FF00FF00FF) << 8);
+            return value;
+        }
+
+        internal static uint Reverse(uint value)
+        {
+            value = ((value & 0xFFFF0000) >> 16) | ((value & 0x0000FFFF) << 16);
+            value = ((value & 0xFF00FF00) >> 8) | ((value & 0x00FF00FF) << 8);
+            return value;
+        }
+
+        internal static ushort Reverse(ushort value)
+        {
+            value = (ushort)((value >> 8) | (value << 8));
+            return value;
+        }
+
+        internal static Span<byte> Write64BitBigEndian(this Span<byte> span, ulong value)
+        {
+            value = Reverse(value);
+            span.Write(value);
+            return span.Slice(sizeof(ulong));
         }
 
         internal static void Write24BitNumber(int numberToWrite, Memory<byte> buffer)
@@ -40,11 +49,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
             buffer.Span.Slice(2).Write((byte)(numberToWrite & 0x0000ff));
         }
 
-        internal static void Write16BitNumber(this Span<byte> span, ushort numberToWrite)
+        internal static Span<byte> Write16BitNumber(this Span<byte> span, ushort value)
         {
-            span.Write((byte)((numberToWrite & 0xFF00) >> 8));
-            span = span.Slice(1);
-            span.Write((byte)((numberToWrite & 0x00FF)));
+            value = Reverse(value);
+            span.Write(value);
+            return span.Slice(sizeof(ushort));
         }
 
         internal static void Write24BitNumber(int numberToWrite, ref WritableBuffer buffer)

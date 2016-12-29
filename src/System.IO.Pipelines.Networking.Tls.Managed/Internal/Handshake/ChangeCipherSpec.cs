@@ -8,7 +8,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
 {
     internal static class ChangeCipherSpec
     {
-        public static void Write(ConnectionState state, ref WritableBuffer buffer)
+        public static void Write(ConnectionStateTls12 state, ref WritableBuffer buffer)
         {
             var frame = new FrameWriter(ref buffer, TlsFrameType.ChangeCipherSpec, state);
 

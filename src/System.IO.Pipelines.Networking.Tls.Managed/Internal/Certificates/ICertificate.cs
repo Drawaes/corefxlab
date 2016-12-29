@@ -11,8 +11,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates
         CertificateType CertificateType { get; }
         byte[] RawData { get; }
         int SignatureSize { get; }
-
-        void SignHash(IHashProvider hashId, Memory<byte> outputBuffer, byte* hash, int hashLength);
         int Decrypt(IntPtr cipherText, int cipherTextLength, IntPtr plainText, int plainTextLength);
+        void SignHash(IHashProvider hashProvider, byte* outputBuffer, int outputBufferLength, byte* hash, int hashLength, PaddingType padding);
+        IHashAndSignInstance GetHashandSignInstance(HashType hashType, PaddingType padding);
     }
 }

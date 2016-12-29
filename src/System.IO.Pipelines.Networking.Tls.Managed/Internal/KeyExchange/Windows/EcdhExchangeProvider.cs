@@ -10,14 +10,14 @@ using Microsoft.Win32.SafeHandles;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Windows
 {
-    internal class EcdhExchangeProvider:IKeyExchangeProvider
+    internal class EcdhExchangeProvider : IKeyExchangeProvider
     {
         private ICertificate _certificate;
         private SafeBCryptAlgorithmHandle _provider;
         private Dictionary<string, SafeBCryptAlgorithmHandle> _providers = new Dictionary<string, SafeBCryptAlgorithmHandle>(StringComparer.OrdinalIgnoreCase);
         private bool _isEphemeral;
         private static readonly string s_providerName = KeyExchangeType.ECDH.ToString();
-        
+
         public EcdhExchangeProvider(ICertificate certificate, bool isEphemeral)
         {
             _isEphemeral = isEphemeral;
@@ -31,11 +31,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Window
 
         public ICertificate Certificate => _certificate;
 
-        public IKeyExchangeInstance GetInstance(ConnectionState state)
+        public IKeyExchangeInstance GetInstance(IConnectionState state)
         {
             if (_isEphemeral)
             {
-                return new EcdheExchangeInstance(_certificate, state, this);
+                var instance = new EcdheExchangeInstance(state, this);
+                instance.SetSignature(_certificate.GetHashandSignInstance(state.CipherSuite.Hash.HashType, PaddingType.Pkcs1),_certificate);
+                return instance;
             }
             throw new NotImplementedException();
         }
@@ -71,7 +73,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Window
             {
                 foreach (var kv in _providers)
                 {
-                        kv.Value?.Dispose();
+                    kv.Value?.Dispose();
                 }
                 _providers.Clear();
             }

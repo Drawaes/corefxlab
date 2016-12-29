@@ -10,7 +10,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Windo
     internal class WindowsCertificatePal:ICertificatePal
     {
         private ICertificate[] _certificates; 
-
+        private CipherList _cipherList;
+        
         private ICertificate GetCertificate(X509Certificate2 certificate)
         {
             var privateKey = InteropCertificates.GetPrivateKeyHandle(certificate);
@@ -18,7 +19,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Windo
             switch (certType)
             {
                 case CertificateType.Rsa:
-                    return new RsaCertificate(privateKey, certificate);
+                    return new RsaCertificate(privateKey, certificate, _cipherList);
                 default:
                     throw new NotImplementedException("Unsupported Certificate type");
             }
@@ -48,6 +49,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Windo
                 }
             }
             return null;
+        }
+
+        public void SetCipherList(CipherList cipherList)
+        {
+            _cipherList = cipherList;
         }
     }
 }

@@ -11,6 +11,6 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers
         int NonceSaltLength { get;}
         int KeySizeInBytes { get;}
         bool RequiresHmac { get;}
-        unsafe IBulkCipherInstance GetCipherKey(byte* key, int keyLength);
+        unsafe IBulkCipherInstance GetCipherKey(byte* key, int keyLength,CipherSuite suite);
     }
 }

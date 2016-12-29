@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Windows;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.TlsSpec;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows;
@@ -29,7 +30,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
             _buffer = pool.Rent(bufferSizeNeeded);
             try
             {
-                _handle = Internal.Windows.BCryptHelper.ImportKey(provider, _buffer.Memory, keyPointer, keyLength);
+                _handle = BCryptHelper.ImportKey(provider, _buffer.Memory, keyPointer, keyLength);
                 _blockLength = BCryptPropertiesHelper.GetBlockLength(_handle);
                 _maxTagLength = BCryptPropertiesHelper.GetMaxAuthTagLength(_handle);
             }
@@ -58,18 +59,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
             buffer.Write(new Span<byte>(_nonceBuffer, 4));
         }
 
-        public unsafe void Encrypt(ref WritableBuffer buffer, ReadableBuffer plainText, TlsFrameType frameType, ConnectionState state)
+        public unsafe void Encrypt(ref WritableBuffer buffer, ReadableBuffer plainText, TlsFrameType frameType, IConnectionState state)
         {
-            var additionalData = stackalloc byte[13];
-            var additionalSpan = new Span<byte>(additionalData, 13);
-            additionalSpan.Write64BitNumber(_sequenceNumber);
-            additionalSpan = additionalSpan.Slice(8);
-            additionalSpan.Write(frameType);
-            additionalSpan = additionalSpan.Slice(1);
-            additionalSpan.Write((ushort)Tls12Utils.TLS_VERSION);
-            additionalSpan = additionalSpan.Slice(2);
-            additionalSpan.Write16BitNumber((ushort)plainText.Length);
-
+            var addInfo = new AdditionalInformation(_sequenceNumber, (ushort)plainText.Length, frameType);
+            
             fixed (byte* noncePtr = _nonceBuffer)
             {
                 var cInfo = new BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO();
@@ -85,8 +78,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
                 cInfo.pbMacContext = (IntPtr)macRecord;
                 cInfo.pbTag = (IntPtr)tag;
                 cInfo.cbTag = Tls12Utils.AEAD_TAG_LENGTH;
-                cInfo.pbAuthData = (IntPtr)additionalData;
-                cInfo.cbAuthData = 13;
+                cInfo.pbAuthData = &addInfo;
+                cInfo.cbAuthData = sizeof(AdditionalInformation);
                 var totalDataLength = plainText.Length;
                 foreach (var b in plainText)
                 {
@@ -117,21 +110,16 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
 
                 var nouceSpan = new Span<byte>(noncePtr + 4, 8);
                 _sequenceNumber++;
-                nouceSpan.Write64BitNumber(_sequenceNumber);
+                nouceSpan.Write64BitBigEndian(_sequenceNumber);
             }
         }
 
         public unsafe void DecryptFrame(ReadableBuffer buffer, ref WritableBuffer writer)
         {
-            var additionalData = stackalloc byte[13];
-            var spanAdditional = new Span<byte>(additionalData, 13);
-            spanAdditional.Write64BitNumber(_sequenceNumber);
-            _sequenceNumber++;
-            spanAdditional = spanAdditional.Slice(8);
-            buffer.Slice(0, 3).CopyTo(spanAdditional);
-            spanAdditional = spanAdditional.Slice(3);
+            var frameType = buffer.ReadBigEndian<TlsFrameType>();
             var newLength = buffer.Slice(3, 2).ReadBigEndian<ushort>() - Tls12Utils.AEAD_TAG_LENGTH - 8;
-            spanAdditional.Write16BitNumber((ushort)newLength);
+            var addInfo = new AdditionalInformation(_sequenceNumber,(ushort)newLength, frameType);
+            _sequenceNumber++;
             buffer = buffer.Slice(5);
             var nSpan = new Span<byte>(_nonceBuffer, 4);
             buffer.Slice(0, 8).CopyTo(nSpan);
@@ -162,7 +150,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
                 cInfo.dwInfoVersion = 1;
                 cInfo.cbSize = Marshal.SizeOf<BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO>();
                 cInfo.cbAuthData = 13;
-                cInfo.pbAuthData = (IntPtr)additionalData;
+                cInfo.pbAuthData = &addInfo;
                 cInfo.pbTag = (IntPtr)authPtr;
                 cInfo.cbTag = Tls12Utils.AEAD_TAG_LENGTH;
                 cInfo.dwFlags = AuthenticatedCipherModeInfoFlags.ChainCalls;
@@ -206,19 +194,47 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
             }
             writeBuffer.Ensure(dataToWrite.Length);
             void* output;
-            if (!writeBuffer.Memory.TryGetPointer(out output))
+            var handleIn = default(GCHandle);
+            var handleOut = default(GCHandle);
+            try
             {
-                throw new NotImplementedException();
+                if (!writeBuffer.Memory.TryGetPointer(out output))
+                {
+                    ArraySegment<byte> segment;
+                    if (!writeBuffer.Memory.TryGetArray(out segment))
+                    {
+                        Debug.Assert(false,"Unable to get pointer or array");
+                    }
+                    handleOut = GCHandle.Alloc(segment.Array,GCHandleType.Pinned);
+                    output = IntPtr.Add(handleOut.AddrOfPinnedObject(),segment.Offset).ToPointer();
+                }
+                void* input;
+                if (!dataToWrite.TryGetPointer(out input))
+                {
+                    ArraySegment<byte> segWrite;
+                    if (!dataToWrite.TryGetArray(out segWrite))
+                    {
+                        Debug.Assert(false, "Unable to get pointer or array");
+                    }
+                    handleIn = GCHandle.Alloc(segWrite.Array,GCHandleType.Pinned);
+                    input = IntPtr.Add(handleIn.AddrOfPinnedObject(),segWrite.Offset).ToPointer();
+                }
+                int result;
+                ExceptionHelper.CheckReturnCode(
+                    BCryptDecrypt(_handle, input, dataToWrite.Length, Unsafe.AsPointer(ref info), ivPtr, _blockLength, output, dataToWrite.Length, out result, 0));
+                writeBuffer.Advance(result);
             }
-            void* input;
-            if (!dataToWrite.TryGetPointer(out input))
+            finally
             {
-                throw new NotImplementedException();
+                if(handleIn.IsAllocated)
+                {
+                    handleIn.Free();
+                }
+                if(handleOut.IsAllocated)
+                {
+                    handleOut.Free();
+                }
             }
-            int result;
-            ExceptionHelper.CheckReturnCode(
-                BCryptDecrypt(_handle, input, dataToWrite.Length, Unsafe.AsPointer(ref info), ivPtr, _blockLength, output, dataToWrite.Length, out result, 0));
-            writeBuffer.Advance(result);
         }
 
         ~AeadCipherKey()

@@ -35,5 +35,15 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
         Cached_info = 25,//[RFC7924]
         SessionTicket = 35,//[RFC4507]
         Renegotiation_info = 65281, //[RFC5746]
+
+        //TLS 1.3
+        Key_Share = 40,
+        Pre_Shared_Key = 41,
+        Early_Data = 42,
+        Supported_Versions = 43,
+        Cookie = 44,
+        Psk_Key_Exchange_Modes = 45,
+        Certificate_Authorities = 47,
+        Oid_Filters = 48,
     }
 }

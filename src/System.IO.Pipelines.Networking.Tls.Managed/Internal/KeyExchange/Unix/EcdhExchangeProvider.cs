@@ -34,11 +34,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Unix
             return _curveNids[curveId];
         }
 
-        public IKeyExchangeInstance GetInstance(ConnectionState state)
+        public IKeyExchangeInstance GetInstance(IConnectionState state)
         {
             if (_isEphemeral)
             {
-                return new EcdheExchangeInstance(_certificate, state, this);
+                var instance = new EcdheExchangeInstance(state, this);
+                instance.SetSignature(_certificate.GetHashandSignInstance(state.CipherSuite.Hash.HashType, PaddingType.Pkcs1), _certificate);
+                return instance;
             }
             throw new NotImplementedException();
         }

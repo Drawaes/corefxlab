@@ -9,7 +9,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
 {
     internal static class Finished
     {
-        public unsafe static void ProcessClient(ReadableBuffer buffer, ConnectionState state, byte[] masterSecret)
+        public unsafe static void ProcessClient(ReadableBuffer buffer, ConnectionStateTls12 state, byte[] masterSecret)
         {
             //THIS METHOD is very allocaty for no good reason need to revist the P_Hash function
             //and this method that uses it
@@ -52,7 +52,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             }
         }
 
-        public static unsafe void WriteServer(ref WritableBuffer buffer, ConnectionState state, byte[] masterSecret)
+        public static unsafe void WriteServer(ref WritableBuffer buffer, ConnectionStateTls12 state, byte[] masterSecret)
         {
             var frame = new FrameWriter(ref buffer, TlsFrameType.Handshake, state);
             var handshakeFrame = new HandshakeWriter(ref buffer, state, HandshakeMessageType.Finished);

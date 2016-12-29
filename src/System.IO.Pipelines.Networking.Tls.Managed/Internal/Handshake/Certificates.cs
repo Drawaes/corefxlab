@@ -8,7 +8,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
 {
     internal static class Certificates
     {
-        public static void WriteCertificate(ConnectionState state, ref WritableBuffer buffer)
+        public static void WriteCertificate(ConnectionStateTls12 state, ref WritableBuffer buffer)
         {
             var frame = new FrameWriter(ref buffer, TlsFrameType.Handshake, state);
             var hw = new HandshakeWriter(ref buffer, state, HandshakeMessageType.Certificate);

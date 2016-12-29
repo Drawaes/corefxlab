@@ -10,5 +10,6 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
     {
         void SetCertificatePal(ICertificatePal certificateFactory);
         IKeyExchangeProvider GetKeyExchange(string keyExchange);
+        ITls13KeyExchangeInstance GetKeyExchangeInstance(NamedGroup group);
     }
 }

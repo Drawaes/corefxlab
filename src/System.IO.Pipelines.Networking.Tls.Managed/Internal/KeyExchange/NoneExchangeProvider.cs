@@ -17,9 +17,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
 
         public ICertificate Certificate => _certificate;
         
-        public IKeyExchangeInstance GetInstance(ConnectionState state)
+        public IKeyExchangeInstance GetInstance(IConnectionState state)
         {
-            return new NoneExchangeInstance(_certificate,state);
+            var instance = new NoneExchangeInstance(state);
+            instance.SetSignature(null,_certificate);
+            return instance;
         }
 
         public void Dispose()

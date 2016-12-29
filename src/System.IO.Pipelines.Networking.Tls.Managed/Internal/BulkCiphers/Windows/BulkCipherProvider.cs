@@ -62,24 +62,23 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Window
                 throw;
             }
         }
-        
+
         public bool IsValid => _isValid;
         public int NonceSaltLength => _nonceSaltLength;
         public int KeySizeInBytes => _keySizeInBytes;
         public int BufferSizeNeededForState => _bufferSizeNeededForState;
         public bool RequiresHmac => _requiresHmac;
 
-        public unsafe IBulkCipherInstance GetCipherKey(byte* key, int keyLength)
+        public unsafe IBulkCipherInstance GetCipherKey(byte* key, int keyLength, CipherSuite suite)
         {
-            if(_requiresHmac)
+            if (_requiresHmac)
             {
-                throw new NotImplementedException();// return new HmacCipherKey();
+                return new HmacCipherKey(_providerHandle, suite, _pool, _bufferSizeNeededForState, key, keyLength);
             }
             else
             {
                 return new AeadCipherKey(_providerHandle, _pool, _bufferSizeNeededForState, key, keyLength);
             }
-            //var returnKey = new AeadCipherKey();// BulkCipherInstance(_providerHandle, _pool, _bufferSizeNeededForState, key, keyLength, !_requiresHmac);
         }
 
         public void SetBufferPool(NativeBufferPool pool)

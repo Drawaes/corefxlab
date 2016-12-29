@@ -14,7 +14,7 @@ internal partial class Interop
     {
 #if !NETNATIVE
         [DllImport(Libraries.BCrypt, CharSet = CharSet.Unicode)]
-        internal static extern NTSTATUS BCryptImportKey(SafeBCryptAlgorithmHandle hAlgorithm, SafeBCryptKeyHandle hImportKey, string pszBlobType, out SafeBCryptKeyHandle phKey, IntPtr pbKeyObject, int cbKeyObject, IntPtr pbInput, int cbInput, int dwFlags);
+        internal static extern NTSTATUS BCryptImportKey(SafeBCryptAlgorithmHandle hAlgorithm, IntPtr hImportKey, string pszBlobType, out SafeBCryptKeyHandle phKey, IntPtr pbKeyObject, int cbKeyObject, IntPtr pbInput, int cbInput, int dwFlags);
 #endif
     }
 }

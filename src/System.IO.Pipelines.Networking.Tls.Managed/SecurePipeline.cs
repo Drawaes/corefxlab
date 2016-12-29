@@ -14,7 +14,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
         private readonly Pipe _outputPipe;
         private readonly Pipe _inputPipe;
         private readonly Pipe _handshakePipe;
-        private ConnectionState _currentConnectionState;
+        private ConnectionStateFactory _currentConnectionState;
         private TaskCompletionSource<bool> _finished = new TaskCompletionSource<bool>();
 
         public IPipelineReader Input => _outputPipe;
@@ -27,7 +27,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
             _outputPipe = factory.Create();
             _inputPipe = factory.Create();
             _handshakePipe = factory.Create();
-            _currentConnectionState = new ConnectionState(_handshakePipe, _lowerConnection.Output, parentContext.CipherList);
+            _currentConnectionState = new ConnectionStateFactory(_handshakePipe, _lowerConnection.Output, parentContext.CipherList);
             StartReading();
         }
 
@@ -132,7 +132,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                                 messageBuffer = buffer.Slice(0, maxBlockSize);
                                 buffer = buffer.Slice(maxBlockSize);
                             }
-                            FrameWriter fw = new FrameWriter(ref writeBuffer, TlsFrameType.AppData, _currentConnectionState);
+                            FrameWriter fw = new FrameWriter(ref writeBuffer, TlsFrameType.AppData, _currentConnectionState.ConnectionState);
                             writeBuffer.Append(messageBuffer);
                             fw.Finish(ref writeBuffer);
                         }

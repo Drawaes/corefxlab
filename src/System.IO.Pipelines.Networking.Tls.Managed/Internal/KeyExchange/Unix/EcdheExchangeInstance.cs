@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Unix;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.TlsSpec;
 using System.Linq;
@@ -11,17 +12,17 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Unix
 {
     internal class EcdheExchangeInstance : IKeyExchangeInstance
     {
-        private readonly ICertificate _certificate;
-        private readonly ConnectionState _state;
+        private IHashInstance _hashInstance;
+        private CertificateType _certificateType;
+        private readonly IConnectionState _state;
         private readonly EcdhExchangeProvider _exchangeProvider;
         private EllipticCurves _curveType;
         private int _nid;
         private IntPtr _eKey;
         private int _eKeySize;
 
-        public EcdheExchangeInstance(ICertificate certificate, ConnectionState state, EcdhExchangeProvider provider)
+        public EcdheExchangeInstance(IConnectionState state, EcdhExchangeProvider provider)
         {
-            _certificate = certificate;
             _state = state;
             _exchangeProvider = provider;
         }
@@ -49,6 +50,12 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Unix
         {
         }
 
+        public void SetSignature(IHashInstance hashInstance, ICertificate certificateType)
+        {
+            _hashInstance = hashInstance;
+            _certificateType = certificateType.CertificateType;
+        }
+
         public unsafe void WriteServerKeyExchange(ref WritableBuffer buffer)
         {
             var frame = new FrameWriter(ref buffer, TlsFrameType.Handshake, _state);
@@ -63,24 +70,22 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Unix
 
             WriteServerECDHParams(ref buffer);
 
-            var hash = _state.CipherSuite.Hash.GetLongRunningHash(null);
+            var hash = _hashInstance;
             hash.HashData(_state.ClientRandom);
             hash.HashData(_state.ServerRandom);
             hash.HashData(bookMark.Slice(0, messageSize));
 
             buffer.Ensure(2);
             buffer.WriteBigEndian((byte)_state.CipherSuite.Hash.HashType);
-            buffer.WriteBigEndian((byte)_certificate.CertificateType);
+            buffer.WriteBigEndian((byte)_certificateType);
 
             var hashResult = stackalloc byte[hash.HashLength];
             hash.Finish(hashResult, hash.HashLength, true);
 
-            buffer.Ensure(_certificate.SignatureSize + 2);
-            buffer.WriteBigEndian((ushort)_certificate.SignatureSize);
-
-            _certificate.SignHash(_state.CipherSuite.Hash, buffer.Memory.Slice(0, _certificate.SignatureSize), hashResult, hash.HashLength);
-            buffer.Advance(_certificate.SignatureSize);
-
+            buffer.Ensure(_hashInstance.HashLength + 2);
+            buffer.WriteBigEndian((ushort)_hashInstance.HashLength);
+            buffer.Write(new Span<byte>(hashResult, hash.HashLength));
+            
             hw.Finish(ref buffer);
             frame.Finish(ref buffer);
         }

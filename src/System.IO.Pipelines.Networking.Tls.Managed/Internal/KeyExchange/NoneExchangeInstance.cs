@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Windows;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -12,13 +13,14 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
     internal class NoneExchangeInstance : IKeyExchangeInstance
     {
         private ICertificate _certificate;
-        private ConnectionState _state;
+        private IConnectionState _state;
 
-        public NoneExchangeInstance(ICertificate certificate, ConnectionState state)
+        public NoneExchangeInstance(IConnectionState state)
         {
-            _certificate = certificate;
             _state = state;
         }
+
+        public ICertificate Certificate { set { _certificate = value; } }
 
         public unsafe byte[] ProcessClientKeyExchange(ReadableBuffer buffer)
         {
@@ -101,6 +103,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange
 
         public void ProcessSupportedGroupsExtension(ReadableBuffer buffer)
         {
+        }
+
+        public void SetSignature(IHashInstance hashInstance, ICertificate certificate)
+        {
+            _certificate = certificate;
         }
 
         public void WriteServerKeyExchange(ref WritableBuffer buffer)

@@ -8,11 +8,11 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
 {
     internal struct HandshakeWriter
     {
-        private ConnectionState _state;
+        private IConnectionState _state;
         private int _amountWritten;
         private Memory<byte> _bookmark;
 
-        public HandshakeWriter(ref WritableBuffer buffer, ConnectionState state, HandshakeMessageType messageType)
+        public HandshakeWriter(ref WritableBuffer buffer, IConnectionState state, HandshakeMessageType messageType)
         {
             _state = state;
             buffer.WriteBigEndian(messageType);

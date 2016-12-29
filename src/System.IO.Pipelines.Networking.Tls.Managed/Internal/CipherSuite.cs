@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.TlsSpec;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -15,6 +16,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
         private readonly IHashProvider _hashProvider;
         private readonly IBulkCipherProvider _bulkCipherProvider;
         private readonly IKeyExchangeProvider _keyProvider;
+        private readonly TlsVersions _tlsVersion;
 
         public CipherSuite(ushort cipherId, string cipherString, IBulkCipherPal bulkFactory, IHashPal hashFactory, IKeyExchangePal keyFactory)
         {
@@ -23,15 +25,33 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
             //Remove TLS_ from the front of the string
             var remainingString = cipherString.Substring(4);
             var keyExchangeAndBulk = remainingString.Split(new string[] { "_WITH_" }, StringSplitOptions.None);
-            var hash = keyExchangeAndBulk[1].Substring(keyExchangeAndBulk[1].LastIndexOf('_') + 1);
-            var bulk = keyExchangeAndBulk[1].Substring(0, keyExchangeAndBulk[1].Length - hash.Length - 1);
-            if (bulk.StartsWith("3"))
+            if(keyExchangeAndBulk.Length == 1)
             {
-                bulk = "Triple" + bulk.Substring(1);
+                //Tls 1.3 cipher suite
+                var hash = keyExchangeAndBulk[0].Substring(keyExchangeAndBulk[0].LastIndexOf('_') + 1);
+                var bulk = keyExchangeAndBulk[0].Substring(0, keyExchangeAndBulk[0].Length - hash.Length - 1);
+                if (bulk.StartsWith("3"))
+                {
+                    bulk = "Triple" + bulk.Substring(1);
+                }
+                _hashProvider = hashFactory.GetHashProvider(hash);
+                _bulkCipherProvider = bulkFactory.GetCipher(bulk);
+                _tlsVersion = TlsVersions.Tls13;
             }
-            _hashProvider = hashFactory.GetHashProvider(hash);
-            _bulkCipherProvider = bulkFactory.GetCipher(bulk);
-            _keyProvider = keyFactory.GetKeyExchange(keyExchangeAndBulk[0]);
+            else if(keyExchangeAndBulk.Length == 2)
+            {
+                //Original Tls cipher suite
+                var hash = keyExchangeAndBulk[1].Substring(keyExchangeAndBulk[1].LastIndexOf('_') + 1);
+                var bulk = keyExchangeAndBulk[1].Substring(0, keyExchangeAndBulk[1].Length - hash.Length - 1);
+                if (bulk.StartsWith("3"))
+                {
+                    bulk = "Triple" + bulk.Substring(1);
+                }
+                _hashProvider = hashFactory.GetHashProvider(hash);
+                _bulkCipherProvider = bulkFactory.GetCipher(bulk);
+                _keyProvider = keyFactory.GetKeyExchange(keyExchangeAndBulk[0]);
+                _tlsVersion = TlsVersions.Tls12;
+            }
         }
 
         public string CipherString => _cipherString;
@@ -39,9 +59,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
         public IKeyExchangeProvider KeyExchange => _keyProvider;
         public IBulkCipherProvider BulkCipher => _bulkCipherProvider;
         public IHashProvider Hash => _hashProvider;
+        public TlsVersions TlsVersion => _tlsVersion;
         public int KeyMaterialRequired => 2 * (_bulkCipherProvider.KeySizeInBytes + (_bulkCipherProvider.RequiresHmac ? _hashProvider.HashLength : 0) + _bulkCipherProvider.NonceSaltLength);
 
-        internal unsafe void ProcessKeyMaterial(ConnectionState state, byte[] keyMaterial)
+        internal unsafe void ProcessKeyMaterial(ConnectionStateTls12 state, byte[] keyMaterial)
         {
             fixed (byte* keyPtr = keyMaterial)
             {
@@ -56,10 +77,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
                     currentPtr += Hash.HashLength;
                 }
 
-                var clientKey = BulkCipher.GetCipherKey(currentPtr, BulkCipher.KeySizeInBytes);
+                var clientKey = BulkCipher.GetCipherKey(currentPtr, BulkCipher.KeySizeInBytes, state.CipherSuite);
                 clientKey.HmacKey = clientHmac;
                 currentPtr = keyPtr + BulkCipher.KeySizeInBytes;
-                var serverKey = BulkCipher.GetCipherKey(currentPtr, BulkCipher.KeySizeInBytes);
+                var serverKey = BulkCipher.GetCipherKey(currentPtr, BulkCipher.KeySizeInBytes, state.CipherSuite);
                 serverKey.HmacKey = serverHmac;
                 currentPtr = currentPtr + BulkCipher.KeySizeInBytes;
 
@@ -78,11 +99,15 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
 
         public bool IsValid()
         {
-            if (_bulkCipherProvider == null || _hashProvider == null || _keyProvider == null)
+            if (_tlsVersion == TlsVersions.Tls12 && _bulkCipherProvider != null && _hashProvider != null && _keyProvider != null)
             {
-                return false;
+                return true;
             }
-            return true;
+            if(_tlsVersion == TlsVersions.Tls13 && _bulkCipherProvider != null && _hashProvider != null)
+            {
+                return true;
+            }
+            return false;
         }
 
         public override string ToString()

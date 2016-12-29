@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.TlsSpec
 {
-    internal enum EllipticCurves
+    internal enum EllipticCurves:ushort
     {
         //http://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml
         Unassigned = 0,
@@ -37,12 +37,12 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.TlsSpec
         brainpoolP256r1 = 26,
         brainpoolP384r1 = 27,
         brainpoolP512r1 = 28,
+        x25519 = 0x001D,
+        x448 = 0x001E,
         ffdhe2048 = 256,
         ffdhe3072 = 257,
         ffdhe4096 = 258,
         ffdhe6144 = 259,
         ffdhe8192 = 260,
-        arbitrary_explicit_prime_curves = 65281,
-        arbitrary_explicit_char2_curves = 65282,
     }
 }

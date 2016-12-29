@@ -13,6 +13,12 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Window
         private IKeyExchangeProvider[] _rsa = new IKeyExchangeProvider[s_NumberOfKeyExchangeTypes];
         private IKeyExchangeProvider[] _ecdsa = new IKeyExchangeProvider[s_NumberOfKeyExchangeTypes];
         private ICertificatePal _certFactory;
+        private EcdhExchangeProvider _ecdhProvider;
+
+        public WindowsKeyExchangePal()
+        {
+            _ecdhProvider = new EcdhExchangeProvider(null, true);
+        }
 
         public IKeyExchangeProvider GetKeyExchange(string keyExchange)
         {
@@ -54,6 +60,24 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Window
         public void SetCertificatePal(ICertificatePal certificateFactory)
         {
             _certFactory = certificateFactory;
+        }
+
+        public ITls13KeyExchangeInstance GetKeyExchangeInstance(NamedGroup group)
+        {
+            if(((ushort)group & 0xff00) == 0)
+            {
+                //ECDHE
+                TlsSpec.EllipticCurves ec;
+                if (Enum.TryParse(group.ToString(), true, out ec))
+                {
+                    var prov = _ecdhProvider.GetProvider(ec);
+                    if(prov != null)
+                    {
+                        throw new NotImplementedException("Matched a curve need to make the instance now");
+                    }
+                }
+            }
+            return null;
         }
     }
 }

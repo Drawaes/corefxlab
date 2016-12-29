@@ -26,7 +26,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Unix
 
         internal static unsafe int[] GetCurveNids()
         {
-            var returnValues = new int[((int[])Enum.GetValues(typeof(EllipticCurves))).Max() + 1];
+            var returnValues = new int[((ushort[])Enum.GetValues(typeof(EllipticCurves))).Max() + 1];
 
             IntPtr result = EC_get_builtin_curves(null, IntPtr.Zero);
             var numberOfItems = result.ToInt32();

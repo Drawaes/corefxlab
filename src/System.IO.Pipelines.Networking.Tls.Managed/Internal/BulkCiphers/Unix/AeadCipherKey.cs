@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Unix;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.TlsSpec;
 using System.Linq;
@@ -30,18 +31,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Unix
         public int ExplicitNonceSize => sizeof(ulong);
         public byte[] HmacKey { set { } }
 
-        public void Encrypt(ref WritableBuffer buffer, ReadableBuffer plainText, TlsFrameType frameType, ConnectionState state)
+        public void Encrypt(ref WritableBuffer buffer, ReadableBuffer plainText, TlsFrameType frameType, IConnectionState state)
         {
-            var additionalData = stackalloc byte[13];
-            var additionalSpan = new Span<byte>(additionalData, 13);
-            additionalSpan.Write64BitNumber(_sequenceNumber);
-            additionalSpan = additionalSpan.Slice(8);
-            additionalSpan.Write(frameType);
-            additionalSpan = additionalSpan.Slice(1);
-            additionalSpan.Write(Tls12Utils.TLS_VERSION);
-            additionalSpan = additionalSpan.Slice(2);
-            additionalSpan.Write16BitNumber((ushort)plainText.Length);
-
+            var addInfo = new AdditionalInformation(_sequenceNumber,(ushort) plainText.Length,frameType);
+            
             fixed (byte* noncePtr = _nonceBuffer)
             {
                 var totalDataLength = plainText.Length;
@@ -49,7 +42,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Unix
                 {
                     ExceptionHelper.CheckOpenSslError(EVP_EncryptInit_ex(ctx, _cipher, IntPtr.Zero, (byte*)_keyPointer, noncePtr));
                     int resultSize = 0;
-                    ExceptionHelper.CheckOpenSslError(EVP_EncryptUpdate(ctx, null, ref resultSize, additionalData, 13));
+                    ExceptionHelper.CheckOpenSslError(EVP_EncryptUpdate(ctx, null, ref resultSize, &addInfo, sizeof(AdditionalInformation)));
                     foreach (var b in plainText)
                     {
                         totalDataLength = totalDataLength - b.Length;
@@ -58,12 +51,29 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Unix
                             continue;
                         }
                         void* inPointer;
-                        if (!b.TryGetPointer(out inPointer))
+                        var handle = default(GCHandle);
+                        try
                         {
-                            throw new NotImplementedException("Need to implement a pinned array if we can't get a pointer");
+                            if (!b.TryGetPointer(out inPointer))
+                            {
+                                ArraySegment<byte> segment;
+                                if(!b.TryGetArray(out segment))
+                                {
+                                    Debug.Assert(false, "Unable to get a pointer or an array for the plaintext buffer");
+                                }
+                                handle = GCHandle.Alloc(segment.Array,GCHandleType.Pinned);
+                                inPointer = IntPtr.Add(handle.AddrOfPinnedObject(),segment.Offset).ToPointer();
+                            }
+                            int amountWritten = b.Length;
+                            ExceptionHelper.CheckOpenSslError(EVP_EncryptUpdate(ctx, inPointer, ref amountWritten, inPointer, amountWritten));
                         }
-                        int amountWritten = b.Length;
-                        ExceptionHelper.CheckOpenSslError(EVP_EncryptUpdate(ctx, inPointer, ref amountWritten, inPointer, amountWritten));
+                        finally
+                        {
+                            if(handle.IsAllocated)
+                            {
+                                handle.Free();
+                            }
+                        }
                     }
                     int result = 0;
                     ExceptionHelper.CheckOpenSslError(EVP_EncryptFinal_ex(ctx, null, ref result));
@@ -77,7 +87,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Unix
                     buffer.Advance(Tls12Utils.AEAD_TAG_LENGTH);
                     var nouceSpan = new Span<byte>(noncePtr + 4, 8);
                     _sequenceNumber++;
-                    nouceSpan.Write64BitNumber(_sequenceNumber);
+                    nouceSpan.Write64BitBigEndian(_sequenceNumber);
                 }
             }
         }
@@ -96,15 +106,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Unix
 
         public void DecryptFrame(ReadableBuffer buffer, ref WritableBuffer writer)
         {
-            var additionalData = stackalloc byte[13];
-            var spanAdditional = new Span<byte>(additionalData, 13);
-            spanAdditional.Write64BitNumber(_sequenceNumber);
-            _sequenceNumber++;
-            spanAdditional = spanAdditional.Slice(8);
-            buffer.Slice(0, 3).CopyTo(spanAdditional);
-            spanAdditional = spanAdditional.Slice(3);
+            var frameType = buffer.ReadBigEndian<TlsFrameType>();
             var newLength = buffer.Slice(3, 2).ReadBigEndian<ushort>() - Tls12Utils.AEAD_TAG_LENGTH - 8;
-            spanAdditional.Write16BitNumber((ushort)newLength);
+            var addInfo = new AdditionalInformation(_sequenceNumber, (ushort)(newLength+1), frameType);
+            _sequenceNumber++;
             buffer = buffer.Slice(5);
             var nSpan = new Span<byte>(_nonceBuffer);
             buffer.Slice(0, 8).CopyTo(nSpan.Slice(4));
@@ -121,7 +126,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Unix
                 {
                     if (!authTag.First.TryGetPointer(out authPtr))
                     {
-                        throw new NotImplementedException();
+                        ArraySegment<byte> segments;
+                        if(!authTag.First.TryGetArray(out segments))
+                        {
+                            Debug.Assert(false, "Not sure how we got here, no pointer or array");
+                        }
+                        authHandle = GCHandle.Alloc(segments.Array);
+                        authPtr = IntPtr.Add(authHandle.AddrOfPinnedObject(), segments.Offset).ToPointer();
                     }
                 }
                 else
@@ -134,7 +145,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Unix
                 {
                     ExceptionHelper.CheckOpenSslError(EVP_EncryptInit_ex(ctx, _cipher, IntPtr.Zero, (byte*)_keyPointer, nPtr));
                     int resultSize = 0;
-                    ExceptionHelper.CheckOpenSslError(EVP_DecryptUpdate(ctx, null, ref resultSize, additionalData, 13));
+                    ExceptionHelper.CheckOpenSslError(EVP_DecryptUpdate(ctx, null, ref resultSize, &addInfo, sizeof(AdditionalInformation)));
                     int amountToWrite = cipherText.Length;
                     foreach (var b in cipherText)
                     {
@@ -168,13 +179,30 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Unix
                 throw new NotImplementedException();
             }
             void* input;
-            if (!dataToWrite.TryGetPointer(out input))
+            GCHandle handle = default(GCHandle);
+            try
             {
-                throw new NotImplementedException();
+                if (!dataToWrite.TryGetPointer(out input))
+                {
+                    ArraySegment<byte> segment;
+                    if(!dataToWrite.TryGetArray(out segment))
+                    {
+                        Debug.Assert(false, "Not sure how we got here");
+                    }
+                    handle = GCHandle.Alloc(segment.Array, GCHandleType.Pinned);
+                    input = IntPtr.Add(handle.AddrOfPinnedObject(), segment.Offset).ToPointer();
+                }
+                int result = dataToWrite.Length;
+                ExceptionHelper.CheckOpenSslError(EVP_DecryptUpdate(ctx, output, ref result, input, result));
+                writeBuffer.Advance(result);
             }
-            int result = dataToWrite.Length;
-            ExceptionHelper.CheckOpenSslError(EVP_DecryptUpdate(ctx, output, ref result, input, result));
-            writeBuffer.Advance(result);
+            finally
+            {
+                if(handle.IsAllocated)
+                {
+                    handle.Free();
+                }
+            }
         }
 
         ~AeadCipherKey()

@@ -11,10 +11,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
         private TlsFrameType _frameType;
         private Memory<byte> _bookmark;
         private int _amountWrittenBefore;
-        private ConnectionState _state;
+        private IConnectionState _state;
         private int _encryptedDataStart;
 
-        public FrameWriter(ref WritableBuffer buffer, TlsFrameType frameType, ConnectionState state)
+        public FrameWriter(ref WritableBuffer buffer, TlsFrameType frameType, IConnectionState state)
         {
             _frameType = frameType;
             _state = state;

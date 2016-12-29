@@ -10,6 +10,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.TlsSpec
         HelloRequest = 0,
         ClientHello = 1,
         ServerHello = 2,
+        Hello_Retry_Request = 6,
         NewSessionTicket = 4,
         Certificate = 11,
         ServerKeyExchange = 12,

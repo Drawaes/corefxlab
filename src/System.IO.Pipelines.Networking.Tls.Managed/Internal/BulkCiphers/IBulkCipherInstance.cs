@@ -15,6 +15,6 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers
         void SetNonce(Span<byte> nounce);
         void DecryptFrame(ReadableBuffer buffer, ref WritableBuffer writer);
         void WriteExplicitNonce(ref WritableBuffer buffer);
-        void Encrypt(ref WritableBuffer buffer, ReadableBuffer plainText, TlsFrameType frameType, ConnectionState state);
+        void Encrypt(ref WritableBuffer buffer, ReadableBuffer plainText, TlsFrameType frameType, IConnectionState state);
     }
 }
