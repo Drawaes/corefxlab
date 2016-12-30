@@ -14,6 +14,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
         private readonly Pipe _outputPipe;
         private readonly Pipe _inputPipe;
         private readonly Pipe _handshakePipe;
+        private readonly Pipe _alertPipe;
         private ConnectionStateFactory _currentConnectionState;
         private TaskCompletionSource<bool> _finished = new TaskCompletionSource<bool>();
 
@@ -26,6 +27,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
             _parentContext = parentContext;
             _outputPipe = factory.Create();
             _inputPipe = factory.Create();
+            _alertPipe = factory.Create();
             _handshakePipe = factory.Create();
             _currentConnectionState = new ConnectionStateFactory(_handshakePipe, _lowerConnection.Output, parentContext.CipherList);
             StartReading();
@@ -67,8 +69,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                                     }
                                     break;
                                 case TlsFrameType.Alert:
-                                    await _currentConnectionState.DecryptFrame(messageBuffer, _handshakePipe);
-                                    throw new NotImplementedException();
+                                    await _currentConnectionState.DecryptFrame(messageBuffer, _alertPipe);
+                                    break;
                                 case TlsFrameType.Invalid:
                                 default:
                                     //Need to handle
@@ -163,8 +165,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed
                 }
             }
         }
-
-
+        
         private static bool TryGetFrameType(ref ReadableBuffer buffer, out ReadableBuffer messageBuffer, out TlsFrameType frameType)
         {
             frameType = TlsFrameType.Incomplete;

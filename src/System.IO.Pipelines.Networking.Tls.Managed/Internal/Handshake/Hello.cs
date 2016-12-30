@@ -23,10 +23,10 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             var originalBuffer = buffer;
             buffer = buffer.Slice(4);
 
-            if (buffer.ReadBigEndian<ushort>() != Tls12Utils.TLS_VERSION)
-            {
-                Alerts.AlertException.ThrowAlertException(Alerts.AlertType.Protocol_Version);
-            }
+            //if (buffer.ReadBigEndian<TlsVersions>() != state.TlsVersion)
+            //{
+            //    Alerts.AlertException.ThrowAlertException(Alerts.AlertType.Protocol_Version);
+            //}
             buffer = buffer.Slice(2);
             state.ClientRandom = buffer.Slice(0, Tls12Utils.RANDOM_LENGTH).ToArray();
             buffer = buffer.Slice(Tls12Utils.RANDOM_LENGTH);
@@ -101,7 +101,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
             var memoryToFill = buffer.Memory.Slice(0, Tls12Utils.RANDOM_LENGTH);
             InteropRandom.GetRandom(memoryToFill);
             state.ServerRandom = memoryToFill.ToArray();
-            buffer.Advance(32);
+            buffer.Advance(Tls12Utils.RANDOM_LENGTH);
             //Write 0 for no session id at the moment
             buffer.Ensure(1);
             buffer.WriteBigEndian<byte>(0);

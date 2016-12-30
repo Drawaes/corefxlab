@@ -21,12 +21,15 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash.Windows
         {
             _pool = pool;
             _stateSize = stateSize;
-            _buffer = pool.Rent(stateSize);
+            if (pool != null)
+            {
+                _buffer = pool.Rent(stateSize);
+            }
             _providerHandle = providerHandle;
             _hashSize = hashSize;
             try
             {
-                _hashHandle = Internal.Windows.BCryptHashHelper.CreateHash(_providerHandle, key, _buffer.Memory);
+                _hashHandle = Internal.Windows.BCryptHashHelper.CreateHash(_providerHandle, key, _buffer?.Memory);
             }
             catch
             {

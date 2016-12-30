@@ -5,6 +5,7 @@ using System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Unix;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.TlsSpec;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Unix;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -136,14 +137,14 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Unix
 
             //Create shared context
             IntPtr ctx = InteropEcdh.EVP_PKEY_CTX_new(_eKey, IntPtr.Zero);
-            ExceptionHelper.CheckOpenSslError(InteropEcdh.EVP_PKEY_derive_init(ctx));
-            ExceptionHelper.CheckOpenSslError(InteropEcdh.EVP_PKEY_derive_set_peer(ctx, clientsPubKey));
+            OpenSslPal.CheckOpenSslError(InteropEcdh.EVP_PKEY_derive_init(ctx));
+            OpenSslPal.CheckOpenSslError(InteropEcdh.EVP_PKEY_derive_set_peer(ctx, clientsPubKey));
             IntPtr size = IntPtr.Zero;
-            ExceptionHelper.CheckOpenSslError(InteropEcdh.EVP_PKEY_derive(ctx, null, ref size));
+            OpenSslPal.CheckOpenSslError(InteropEcdh.EVP_PKEY_derive(ctx, null, ref size));
             var tmpBuffer = new byte[size.ToInt32()];
             fixed(void* tPtr = tmpBuffer)
             {
-                ExceptionHelper.CheckOpenSslError(InteropEcdh.EVP_PKEY_derive(ctx, tPtr, ref size));
+                OpenSslPal.CheckOpenSslError(InteropEcdh.EVP_PKEY_derive(ctx, tPtr, ref size));
             }
             byte[] master = new byte[48];
             var seed = new byte[Tls12Utils.MasterSecretSize + Tls12Utils.RANDOM_LENGTH * 2];

@@ -29,7 +29,7 @@ namespace System.IO.Pipelines.Tests
             using (var socketClient = new Networking.Sockets.SocketListener(factory))
             using (var clientContext = new SecurityContext(factory, "test", false, null))
             {
-                var ipEndPoint = new IPEndPoint(IPAddress.Loopback, 443);
+                var ipEndPoint = new IPEndPoint(IPAddress.Parse("192.168.1.70"), 443);
                 socketClient.OnConnection(async s =>
                 {
                     var sp = serverContext.CreateSecurePipeline(s);

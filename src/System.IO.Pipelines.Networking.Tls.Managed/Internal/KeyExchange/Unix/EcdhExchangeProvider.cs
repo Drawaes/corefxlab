@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Unix;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.TlsSpec;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Unix;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -19,7 +20,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Unix
         {
             _isEphemeral = isEphemeral;
             _certificate = certificate;
-            _curveNids = InteropCurves.GetCurveNids();
+            _curveNids = OpenSslPal.GetCurveNids();
         }
 
         public ICertificate Certificate => _certificate;

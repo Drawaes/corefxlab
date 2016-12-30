@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Unix;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Unix;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Win32.SafeHandles;
@@ -18,8 +19,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash.Unix
         {
             _hashProvider = hashProvider;
             _hashLength = hashLength;
-            _hashPointer = EVP_MD_CTX_create();
-            ExceptionHelper.CheckOpenSslError(EVP_DigestInit_ex(_hashPointer, hashProvider,IntPtr.Zero));
+            _hashPointer = OpenSslPal.CreateHash(hashProvider);
         }
 
         public int HashLength => _hashLength;
@@ -28,22 +28,22 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash.Unix
         {
             if (completed)
             {
-                ExceptionHelper.CheckOpenSslError(EVP_DigestFinal_ex(_hashPointer, (IntPtr)output, ref length));
+                OpenSslPal.CheckOpenSslError(EVP_DigestFinal_ex(_hashPointer, (IntPtr)output, ref length));
                 Dispose();
             }
             else
             {
-                using (var tmp = EVP_MD_CTX_create())
+                using (var tmp = OpenSslPal.CopyHash(_hashPointer))
                 {
-                    ExceptionHelper.CheckOpenSslError(EVP_MD_CTX_copy_ex(tmp, _hashPointer));
-                    ExceptionHelper.CheckOpenSslError(EVP_DigestFinal_ex(tmp, (IntPtr)output, ref length));
+
+                    OpenSslPal.CheckOpenSslError(EVP_DigestFinal_ex(tmp, (IntPtr)output, ref length));
                 }
             }
         }
 
         public unsafe void HashData(byte* buffer, int length)
         {
-            ExceptionHelper.CheckOpenSslError(EVP_DigestUpdate(_hashPointer, (IntPtr)buffer, length));
+            OpenSslPal.CheckOpenSslError(EVP_DigestUpdate(_hashPointer, (IntPtr)buffer, length));
         }
 
         ~HashInstance()

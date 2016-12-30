@@ -33,7 +33,7 @@ namespace Microsoft.Win32.SafeHandles
             }
             else
             {
-                System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Unix.InteropBio.BIO_free(h);
+                Interop.Libeay32.BIO_free(h);
                 return true;
             }
         }

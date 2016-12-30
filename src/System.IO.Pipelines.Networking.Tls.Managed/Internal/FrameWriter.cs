@@ -20,7 +20,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
             _state = state;
             buffer.Ensure(5);
             buffer.WriteBigEndian(frameType);
-            buffer.WriteBigEndian(Tls12Utils.TLS_VERSION);
+            buffer.WriteBigEndian(state.TlsVersion);
             _bookmark = buffer.Memory;
             buffer.Advance(2);
             _amountWrittenBefore = buffer.BytesWritten;
@@ -41,6 +41,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
             var recordSize = buffer.BytesWritten - _amountWrittenBefore;
             _bookmark.Span.Write((ushort)((recordSize >> 8) | (recordSize << 8)));
             _bookmark = Memory<byte>.Empty;
+
         }
     }
 }

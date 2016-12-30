@@ -73,7 +73,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.KeyExchange.Unix
                     var prov = _ecdhProvider.GetNid((int)ec);
                     if (prov != 0)
                     {
-                        return new EcdheTls13ExchangeInstance(prov, _ecdhProvider);
+                        return new EcdheTls13ExchangeInstance(prov, _ecdhProvider,group);
                     }
                 }
             }

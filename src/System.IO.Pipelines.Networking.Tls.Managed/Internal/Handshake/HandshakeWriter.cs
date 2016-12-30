@@ -11,9 +11,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Handshake
         private IConnectionState _state;
         private int _amountWritten;
         private Memory<byte> _bookmark;
+        private int start;
+        private HandshakeMessageType _messageType;
 
         public HandshakeWriter(ref WritableBuffer buffer, IConnectionState state, HandshakeMessageType messageType)
         {
+            _messageType = messageType;
+            start = buffer.BytesWritten;
             _state = state;
             buffer.WriteBigEndian(messageType);
             _bookmark = buffer.Memory;

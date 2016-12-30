@@ -9,11 +9,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Unix
 {
     internal unsafe static class InteropBulkCiphers
     {
-        private const string Dll = "libeay32.dll";
-        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal extern static IntPtr EVP_aes_128_gcm();
-        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
-        internal extern static IntPtr EVP_aes_256_gcm();
+        private const string Dll = global::Interop.Libraries.OpenSslCrypto;
+        
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
         internal extern static int EVP_CIPHER_key_length(IntPtr cipher);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]

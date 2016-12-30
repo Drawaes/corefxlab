@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Hash;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Unix;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Unix;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using static System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Unix.InteropCertificates;
+using static global::Interop.Libeay32;
 
 namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Unix
 {
@@ -32,13 +34,13 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Unix
 
         public unsafe void SignHash(IHashProvider hashId, byte* outputBuffer,int outputBufferLength,  byte* hash, int hashLength, PaddingType padding)
         {
-            var ctx = ExceptionHelper.CheckPointerError(EVP_PKEY_CTX_new(_privateKey, IntPtr.Zero));
+            var ctx = OpenSslPal.CheckPointerError(EVP_PKEY_CTX_new(_privateKey, IntPtr.Zero));
             try
             {
-                ExceptionHelper.CheckOpenSslError(EVP_PKEY_sign_init(ctx));
+                OpenSslPal.CheckOpenSslError(EVP_PKEY_sign_init(ctx));
                 SetRSAPadding(ctx);
                 SetRSADigest(ctx,  hashId.AlgId);
-                ExceptionHelper.CheckOpenSslError(EVP_PKEY_sign(ctx, (IntPtr)outputBuffer, ref outputBufferLength ,(IntPtr)hash, hashLength));
+                OpenSslPal.CheckOpenSslError(EVP_PKEY_sign(ctx, (IntPtr)outputBuffer, ref outputBufferLength ,(IntPtr)hash, hashLength));
             }
             finally
             {
@@ -48,12 +50,12 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Certificates.Unix
 
         public int Decrypt(IntPtr cipherText, int cipherTextLength, IntPtr plainText, int plainTextLength)
         {
-            var ctx = ExceptionHelper.CheckPointerError(EVP_PKEY_CTX_new(_privateKey, IntPtr.Zero));
+            var ctx = OpenSslPal.CheckPointerError(EVP_PKEY_CTX_new(_privateKey, IntPtr.Zero));
             try
             {
-                ExceptionHelper.CheckOpenSslError(EVP_PKEY_decrypt_init(ctx));
+                OpenSslPal.CheckOpenSslError(EVP_PKEY_decrypt_init(ctx));
                 SetRSAPadding(ctx);
-                ExceptionHelper.CheckOpenSslError(EVP_PKEY_decrypt(ctx, plainText, ref plainTextLength, cipherText, cipherTextLength));
+                OpenSslPal.CheckOpenSslError(EVP_PKEY_decrypt(ctx, plainText, ref plainTextLength, cipherText, cipherTextLength));
                 return plainTextLength;
             }
             finally

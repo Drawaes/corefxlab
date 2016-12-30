@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Unix;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.TlsSpec;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Unix;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -40,9 +41,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Unix
                 var totalDataLength = plainText.Length;
                 using (var ctx = EVP_CIPHER_CTX_new())
                 {
-                    ExceptionHelper.CheckOpenSslError(EVP_EncryptInit_ex(ctx, _cipher, IntPtr.Zero, (byte*)_keyPointer, noncePtr));
+                    OpenSslPal.CheckOpenSslError(EVP_EncryptInit_ex(ctx, _cipher, IntPtr.Zero, (byte*)_keyPointer, noncePtr));
                     int resultSize = 0;
-                    ExceptionHelper.CheckOpenSslError(EVP_EncryptUpdate(ctx, null, ref resultSize, &addInfo, sizeof(AdditionalInformation)));
+                    OpenSslPal.CheckOpenSslError(EVP_EncryptUpdate(ctx, null, ref resultSize, &addInfo, sizeof(AdditionalInformation)));
                     foreach (var b in plainText)
                     {
                         totalDataLength = totalDataLength - b.Length;
@@ -65,7 +66,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Unix
                                 inPointer = IntPtr.Add(handle.AddrOfPinnedObject(),segment.Offset).ToPointer();
                             }
                             int amountWritten = b.Length;
-                            ExceptionHelper.CheckOpenSslError(EVP_EncryptUpdate(ctx, inPointer, ref amountWritten, inPointer, amountWritten));
+                            OpenSslPal.CheckOpenSslError(EVP_EncryptUpdate(ctx, inPointer, ref amountWritten, inPointer, amountWritten));
                         }
                         finally
                         {
@@ -76,14 +77,14 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Unix
                         }
                     }
                     int result = 0;
-                    ExceptionHelper.CheckOpenSslError(EVP_EncryptFinal_ex(ctx, null, ref result));
+                    OpenSslPal.CheckOpenSslError(EVP_EncryptFinal_ex(ctx, null, ref result));
                     buffer.Ensure(Tls12Utils.AEAD_TAG_LENGTH);
                     void* tagPointer;
                     if (!buffer.Memory.TryGetPointer(out tagPointer))
                     {
                         throw new NotImplementedException();
                     }
-                    ExceptionHelper.CheckCtrlForError(EVP_CIPHER_CTX_ctrl(ctx, EVP_CIPHER_CTRL.EVP_CTRL_GCM_GET_TAG, Tls12Utils.AEAD_TAG_LENGTH, tagPointer));
+                    OpenSslPal.CheckCtrlForError(EVP_CIPHER_CTX_ctrl(ctx, EVP_CIPHER_CTRL.EVP_CTRL_GCM_GET_TAG, Tls12Utils.AEAD_TAG_LENGTH, tagPointer));
                     buffer.Advance(Tls12Utils.AEAD_TAG_LENGTH);
                     var nouceSpan = new Span<byte>(noncePtr + 4, 8);
                     _sequenceNumber++;
@@ -143,9 +144,9 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Unix
                 }
                 using (var ctx = EVP_CIPHER_CTX_new())
                 {
-                    ExceptionHelper.CheckOpenSslError(EVP_EncryptInit_ex(ctx, _cipher, IntPtr.Zero, (byte*)_keyPointer, nPtr));
+                    OpenSslPal.CheckOpenSslError(EVP_EncryptInit_ex(ctx, _cipher, IntPtr.Zero, (byte*)_keyPointer, nPtr));
                     int resultSize = 0;
-                    ExceptionHelper.CheckOpenSslError(EVP_DecryptUpdate(ctx, null, ref resultSize, &addInfo, sizeof(AdditionalInformation)));
+                    OpenSslPal.CheckOpenSslError(EVP_DecryptUpdate(ctx, null, ref resultSize, &addInfo, sizeof(AdditionalInformation)));
                     int amountToWrite = cipherText.Length;
                     foreach (var b in cipherText)
                     {
@@ -158,7 +159,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Unix
                         WriteBlock(ctx, ref writer, b);
                     }
                     int result = 0;
-                    ExceptionHelper.CheckOpenSslError(EVP_DecryptFinal_ex(ctx, null, ref result));
+                    OpenSslPal.CheckOpenSslError(EVP_DecryptFinal_ex(ctx, null, ref result));
                 }
             }
             finally
@@ -193,7 +194,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Unix
                     input = IntPtr.Add(handle.AddrOfPinnedObject(), segment.Offset).ToPointer();
                 }
                 int result = dataToWrite.Length;
-                ExceptionHelper.CheckOpenSslError(EVP_DecryptUpdate(ctx, output, ref result, input, result));
+                OpenSslPal.CheckOpenSslError(EVP_DecryptUpdate(ctx, output, ref result, input, result));
                 writeBuffer.Advance(result);
             }
             finally

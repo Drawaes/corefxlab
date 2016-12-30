@@ -10,21 +10,26 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.Windows
 {
     internal static class BCryptHashHelper
     {
-        internal unsafe static SafeBCryptHashHandle CreateHash(SafeBCryptAlgorithmHandle provider, byte[] key, Memory<byte> buffer)
+        internal unsafe static SafeBCryptHashHandle CreateHash(SafeBCryptAlgorithmHandle provider, byte[] key, Memory<byte>? buffer)
         {
             SafeBCryptHashHandle hashPtr;
-            void* bufferPointer;
-            if (!buffer.TryGetPointer(out bufferPointer))
+            void* bufferPointer= null;
+            int length = 0;
+            if (buffer.HasValue)
             {
-                throw new InvalidOperationException("Problem getting the pointer for a native memory block");
+                length = buffer.Value.Length;
+                if (!buffer.Value.TryGetPointer(out bufferPointer))
+                {
+                    throw new InvalidOperationException("Problem getting the pointer for a native memory block");
+                }
             }
             if (key != null)
             {
-                ExceptionHelper.CheckReturnCode(BCryptCreateHash(provider, out hashPtr, (IntPtr)bufferPointer, buffer.Length, key, key.Length, 0));
+                ExceptionHelper.CheckReturnCode(BCryptCreateHash(provider, out hashPtr, (IntPtr)bufferPointer, length, key, key.Length, 0));
             }
             else
             {
-                ExceptionHelper.CheckReturnCode(BCryptCreateHash(provider, out hashPtr, (IntPtr)bufferPointer, buffer.Length, null, 0, 0));
+                ExceptionHelper.CheckReturnCode(BCryptCreateHash(provider, out hashPtr, (IntPtr)bufferPointer, length, null, 0, 0));
             }
             return hashPtr;
         }

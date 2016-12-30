@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Unix;
+using System.IO.Pipelines.Networking.Tls.Managed.Internal.Unix;
 using System.Linq;
 using System.Threading.Tasks;
 using static System.IO.Pipelines.Networking.Tls.Managed.Internal.Interop.Unix.InteropBulkCiphers;
@@ -18,7 +19,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal.BulkCiphers.Unix
         {
             _providerHandle = providerHandle;
             _isAead = isAead;
-            _keySizeInBytes = ExceptionHelper.CheckCtrlForError(EVP_CIPHER_key_length(_providerHandle));
+            _keySizeInBytes = OpenSslPal.CheckCtrlForError(EVP_CIPHER_key_length(_providerHandle));
             if(_isAead)
             {
                 _nonceSaltLength = 4;

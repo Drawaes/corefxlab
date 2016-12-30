@@ -28,6 +28,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
 
         public CipherList(ICertificatePal certificateFactory)
         {
+
+
             _certificateFactory = certificateFactory;
             _certificateFactory.SetCipherList(this);
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -122,7 +124,8 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
 
         public CipherSuite GetCipherInfo(ushort cipherKey)
         {
-            var frontKey = cipherKey >> 8;
+            var frontKey = (cipherKey & 0xFF00)  >> 8;
+            var backKey = (byte)(cipherKey & 0x00FF);
             if(_suites[frontKey] != null)
             {
                 var suite = _suites[frontKey];
