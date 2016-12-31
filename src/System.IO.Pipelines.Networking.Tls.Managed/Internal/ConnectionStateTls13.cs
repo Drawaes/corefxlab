@@ -180,7 +180,7 @@ namespace System.IO.Pipelines.Networking.Tls.Managed.Internal
 
                         hw.Finish(ref outBuffer);
                         fw.Finish(ref outBuffer);
-                        _keyExchangeInstance.GenerateTrafficKeys();
+                        _keyExchangeInstance.GenerateTrafficKeys(this);
                     }
                     else
                     {

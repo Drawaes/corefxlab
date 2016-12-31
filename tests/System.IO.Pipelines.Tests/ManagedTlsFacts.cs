@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls;
-using System.IO.Pipelines.Networking.Tls.Managed;
 using System.IO.Pipelines.Tests.Internal;
 using System.IO.Pipelines.Text.Primitives;
 using System.Linq;
@@ -23,11 +22,10 @@ namespace System.IO.Pipelines.Tests
         [Fact]
         public Task PipelineAllTheThings()
         {
-            using (var cert = new X509Certificate2(_certificatePath, _certificatePassword,X509KeyStorageFlags.Exportable))
+            using (var cert = new X509Certificate2(_certificatePath, _certificatePassword, X509KeyStorageFlags.Exportable))
             using (var factory = new PipelineFactory())
             using (var serverContext = new SecurePipelineListener(factory, new X509Certificate2[] { cert }))
             using (var socketClient = new Networking.Sockets.SocketListener(factory))
-            using (var clientContext = new SecurityContext(factory, "test", false, null))
             {
                 var ipEndPoint = new IPEndPoint(IPAddress.Parse("192.168.1.70"), 443);
                 socketClient.OnConnection(async s =>
@@ -38,37 +36,10 @@ namespace System.IO.Pipelines.Tests
                 socketClient.Start(ipEndPoint);
                 Console.ReadLine();
                 return Task.FromResult(0);
-
-                //                var loopback = new LoopbackPipeline(factory);
-                //                using (var server = serverContext.CreateSecurePipeline(loopback.ServerPipeline))
-                //                using (var client = clientContext.CreateSecurePipeline(loopback.ClientPipeline))
-                //                {
-                //#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-                //                    Echo(server);
-                //#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-                //                    var outputBuffer = client.Output.Alloc(_shortTestString.Length);
-                //                    outputBuffer.Write(Encoding.UTF8.GetBytes(_shortTestString));
-                //                    await outputBuffer.FlushAsync();
-
-                //                    //Now check we get the same thing back
-                //                    string resultString;
-                //                    while (true)
-                //                    {
-                //                        var result = await client.Input.ReadAsync();
-                //                        if (result.Buffer.Length >= _shortTestString.Length)
-                //                        {
-                //                            resultString = result.Buffer.GetUtf8String();
-                //                            client.Input.Advance(result.Buffer.End);
-                //                            break;
-                //                        }
-                //                        client.Input.Advance(result.Buffer.Start, result.Buffer.End);
-                //                    }
-                //                    Assert.Equal(_shortTestString, resultString);
-                //                }
             }
         }
 
-        private async Task Echo(SecurePipeline pipeline)
+        private async Task Echo(SecurePipelineConnection pipeline)
         {
             try
             {
