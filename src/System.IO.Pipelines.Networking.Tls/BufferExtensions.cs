@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace System.IO.Pipelines.Networking.Tls
@@ -13,6 +14,12 @@ namespace System.IO.Pipelines.Networking.Tls
             uint contentSize = buffer.ReadBigEndian<ushort>();
             contentSize = (contentSize << 8) + buffer.Slice(2).ReadBigEndian<byte>();
             return (int)contentSize;
+        }
+
+        public static ReadableBuffer ReadAndSliceBigEndian<[Primitive] T>(this ReadableBuffer buffer, out T value) where T : struct
+        {
+            value = buffer.ReadBigEndian<T>();
+            return buffer.Slice(Marshal.SizeOf<T>());
         }
 
         public static ReadableBuffer SliceVector<[Primitive]T>(ref ReadableBuffer buffer) where T :struct

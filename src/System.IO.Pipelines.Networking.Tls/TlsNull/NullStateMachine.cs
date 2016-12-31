@@ -16,45 +16,7 @@ namespace System.IO.Pipelines.Networking.Tls.TlsNull
         {
             _connection = connection;
         }
-
-        public void HandleAlert(ReadableBuffer buff, ref WritableBuffer writer)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void HandleAppData(ReadableBuffer buffer, ref WritableBuffer writer)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void HandleChangeCipherSpec(ReadableBuffer buffer, ref WritableBuffer writer)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void HandleHandshake(ReadableBuffer buffer, ref WritableBuffer writer)
-        {
-            var version = FindVersion(buffer);
-            IStateMachine statemachine;
-            IRecordHandler recordHandler;
-            switch(version)
-            {
-                case TlsVersion.Tls13Draft18:
-                case TlsVersion.Tls13:
-                    statemachine = new Tls13.Tls13StateMachine(version);
-                    recordHandler = new Tls13RecordHandler();
-                    break;
-                case TlsVersion.Tls12:
-                    throw new NotImplementedException();
-                default:
-                    Alerts.AlertException.ThrowAlert(Alerts.AlertLevel.Fatal, Alerts.AlertDescription.protocol_version);
-                    return;
-            }
-            _connection.StateMachine = statemachine;
-            _connection.RecordHandler = recordHandler;
-            statemachine.HandleHandshake(buffer, ref writer);
-        }
-
+                
         private static TlsVersion FindVersion(ReadableBuffer buffer)
         {
             var length = buffer.Slice(1).ReadBigEndian24bit();
@@ -108,6 +70,33 @@ namespace System.IO.Pipelines.Networking.Tls.TlsNull
                 }
             }
             return TlsVersion.Tls12;
+        }
+
+        public void HandleRecord(RecordType recordType, ReadableBuffer buffer, ref WritableBuffer writer)
+        {
+            if(recordType != RecordType.Handshake)
+            {
+                Alerts.AlertException.ThrowAlert(Alerts.AlertLevel.Fatal,Alerts.AlertDescription.unexpected_message);
+            }
+            var version = FindVersion(buffer);
+            IStateMachine statemachine;
+            IRecordHandler recordHandler;
+            switch (version)
+            {
+                case TlsVersion.Tls13Draft18:
+                case TlsVersion.Tls13:
+                    statemachine = new Tls13.Tls13StateMachine(version, _connection);
+                    recordHandler = new Tls13RecordHandler();
+                    break;
+                case TlsVersion.Tls12:
+                    throw new NotImplementedException();
+                default:
+                    Alerts.AlertException.ThrowAlert(Alerts.AlertLevel.Fatal, Alerts.AlertDescription.protocol_version);
+                    return;
+            }
+            _connection.StateMachine = statemachine;
+            _connection.RecordHandler = recordHandler;
+            statemachine.HandleRecord(recordType, buffer, ref writer);
         }
     }
 }

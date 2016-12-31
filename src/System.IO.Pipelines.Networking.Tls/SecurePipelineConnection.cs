@@ -13,9 +13,11 @@ namespace System.IO.Pipelines.Networking.Tls
         private IStateMachine _stateMachine;
         private readonly Pipe _outputPipe;
         private readonly Pipe _inputPipe;
+        private readonly SecurePipelineListener _listener;
 
-        public SecurePipelineConnection(IPipelineConnection pipeline, PipelineFactory factory)
+        public SecurePipelineConnection(IPipelineConnection pipeline, PipelineFactory factory, SecurePipelineListener listener)
         {
+            _listener = listener;
             _lowerConnection = pipeline;
             _outputPipe = factory.Create();
             _inputPipe = factory.Create();
@@ -26,9 +28,10 @@ namespace System.IO.Pipelines.Networking.Tls
 
         public IPipelineReader Input => _outputPipe;
         public IPipelineWriter Output => _inputPipe;
+        public SecurePipelineListener Listener => _listener;
         internal IRecordHandler RecordHandler { set { _recordHandler = value; } }
         internal IStateMachine StateMachine { set { _stateMachine = value; } }
-
+        
         private async void StartReading()
         {
             while (true)
@@ -44,24 +47,7 @@ namespace System.IO.Pipelines.Networking.Tls
                         var writeBuffer = _lowerConnection.Output.Alloc();
                         try
                         {
-                            switch (recordType)
-                            {
-                                case RecordType.Alert:
-                                    _stateMachine.HandleAlert(messageBuffer, ref writeBuffer);
-                                    break;
-                                case RecordType.Application:
-                                    _stateMachine.HandleAppData(messageBuffer, ref writeBuffer);
-                                    break;
-                                case RecordType.ChangeCipherSpec:
-                                    _stateMachine.HandleChangeCipherSpec(messageBuffer, ref writeBuffer);
-                                    break;
-                                case RecordType.Handshake:
-                                    _stateMachine.HandleHandshake(messageBuffer, ref writeBuffer);
-                                    break;
-                                default:
-                                    Alerts.AlertException.ThrowAlert(Alerts.AlertLevel.Fatal, Alerts.AlertDescription.decode_error);
-                                    break;
-                            }
+                            _stateMachine.HandleRecord(recordType, messageBuffer, ref writeBuffer);
                         }
                         finally
                         {

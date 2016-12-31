@@ -16,6 +16,7 @@ namespace System.IO.Pipelines.Networking.Tls.Internal
             _supportedVersions = supportedVersion;
             _cipherCode = cipherCode;
             _cipherString = cipherString;
+            
         }
 
         public ushort CipherCode => _cipherCode;
@@ -31,6 +32,11 @@ namespace System.IO.Pipelines.Networking.Tls.Internal
                 }
             }
             return false;
+        }
+
+        public IHashInstance GetHashInstance()
+        {
+            throw new NotImplementedException();
         }
     }
 }

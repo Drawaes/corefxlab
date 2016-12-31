@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO.Pipelines.Networking.Tls;
+using System.IO.Pipelines.Networking.Tls.Certificates;
 using System.IO.Pipelines.Tests.Internal;
 using System.IO.Pipelines.Text.Primitives;
 using System.Linq;
@@ -16,6 +17,7 @@ namespace System.IO.Pipelines.Tests
     public class ManagedTlsFacts
     {
         private static readonly string _certificatePath = Path.Combine(PlatformServices.Default.Application.ApplicationBasePath, "data", "TestCert.pfx");
+        private static readonly string _ecdsaCertificate = Path.Combine(PlatformServices.Default.Application.ApplicationBasePath,"data", "certificate.pfx");
         private static readonly string _certificatePassword = "Test123t";
         //private static readonly string _shortTestString = "The quick brown fox jumped over the lazy dog.";
 
@@ -23,19 +25,23 @@ namespace System.IO.Pipelines.Tests
         public Task PipelineAllTheThings()
         {
             using (var cert = new X509Certificate2(_certificatePath, _certificatePassword, X509KeyStorageFlags.Exportable))
-            using (var factory = new PipelineFactory())
-            using (var serverContext = new SecurePipelineListener(factory, new X509Certificate2[] { cert }))
-            using (var socketClient = new Networking.Sockets.SocketListener(factory))
+            using (var cert2 = new X509Certificate2(_ecdsaCertificate, _certificatePassword,X509KeyStorageFlags.Exportable))
             {
-                var ipEndPoint = new IPEndPoint(IPAddress.Parse("192.168.1.70"), 443);
-                socketClient.OnConnection(async s =>
+                var certList = new CertificateList(cert2,cert);
+                using (var factory = new PipelineFactory())
+                using (var serverContext = new SecurePipelineListener(factory, certList))
+                using (var socketClient = new Networking.Sockets.SocketListener(factory))
                 {
-                    var sp = serverContext.CreateSecurePipeline(s);
-                    await Echo(sp);
-                });
-                socketClient.Start(ipEndPoint);
-                Console.ReadLine();
-                return Task.FromResult(0);
+                    var ipEndPoint = new IPEndPoint(IPAddress.Parse("192.168.1.70"), 443);
+                    socketClient.OnConnection(async s =>
+                    {
+                        var sp = serverContext.CreateSecurePipeline(s);
+                        await Echo(sp);
+                    });
+                    socketClient.Start(ipEndPoint);
+                    Console.ReadLine();
+                    return Task.FromResult(0);
+                }
             }
         }
 
