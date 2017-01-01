@@ -7,6 +7,7 @@ namespace System.IO.Pipelines.Networking.Tls.RecordProtocol
 {
     public class RecordUtils
     {
+        public delegate void RecordContentWriter(ref WritableBuffer writer);
         public const int RecordHeaderLength = 5;
 
         public static bool TryGetFrame(ref ReadableBuffer buffer, out ReadableBuffer messageBuffer)

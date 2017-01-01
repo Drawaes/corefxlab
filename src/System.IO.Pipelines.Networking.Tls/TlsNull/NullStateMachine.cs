@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.IO.Pipelines.Networking.Tls.Internal;
 using System.IO.Pipelines.Networking.Tls.TlsSpec;
 using System.IO.Pipelines.Networking.Tls.RecordProtocol;
+using System.IO.Pipelines.Networking.Tls.Hashes;
 
 namespace System.IO.Pipelines.Networking.Tls.TlsNull
 {
@@ -16,7 +17,15 @@ namespace System.IO.Pipelines.Networking.Tls.TlsNull
         {
             _connection = connection;
         }
-                
+
+        public IHashInstance HandshakeHash
+        {
+            get
+            {
+                throw new NotImplementedException();
+            }
+        }
+
         private static TlsVersion FindVersion(ReadableBuffer buffer)
         {
             var length = buffer.Slice(1).ReadBigEndian24bit();
@@ -85,8 +94,8 @@ namespace System.IO.Pipelines.Networking.Tls.TlsNull
             {
                 case TlsVersion.Tls13Draft18:
                 case TlsVersion.Tls13:
-                    statemachine = new Tls13.Tls13StateMachine(version, _connection);
                     recordHandler = new Tls13RecordHandler();
+                    statemachine = new Tls13.Tls13StateMachine(version, _connection, recordHandler);
                     break;
                 case TlsVersion.Tls12:
                     throw new NotImplementedException();

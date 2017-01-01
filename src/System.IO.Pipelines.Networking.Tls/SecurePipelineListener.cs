@@ -22,6 +22,7 @@ namespace System.IO.Pipelines.Networking.Tls
         }
 
         public CipherList CipherList => _cipherList;
+        public CertificateList CertificateList => _certList;
 
         public SecurePipelineConnection CreateSecurePipeline(IPipelineConnection pipeline)
         {

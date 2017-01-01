@@ -18,5 +18,10 @@ namespace System.IO.Pipelines.Networking.Tls.RecordProtocol
             messageBuffer = messageBuffer.Slice(RecordUtils.RecordHeaderLength);
             return recordType;
         }
+
+        public void WriteRecord(ref WritableBuffer writeBuffer, RecordType recordType, RecordUtils.RecordContentWriter innerMethod)
+        {
+            throw new InvalidOperationException();
+        }
     }
 }
